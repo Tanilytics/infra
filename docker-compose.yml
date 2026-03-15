@@ -1,0 +1,261 @@
+name: tanilytics
+networks:
+  redpanda_network:
+    driver: bridge
+volumes:
+  redpanda-0: null
+  redpanda-1: null
+  redpanda-2: null
+services:
+  ##################
+  # Redpanda Brokers #
+  ##################
+  redpanda-0:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_0_KAFKA_PORT}
+      # Address the broker advertises to clients that connect to the Kafka API.
+      # Use the internal addresses to connect to the Redpanda brokers
+      # from inside the same Docker network.
+      # Use the external addresses to connect to the Redpanda brokers
+      # from outside the Docker network.
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:${REDPANDA_0_KAFKA_PORT}
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_0_PROXY_PORT}
+      # Address the broker advertises to clients that connect to the HTTP Proxy.
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:${REDPANDA_0_PROXY_PORT}
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_0_SCHEMA_PORT}
+      # Redpanda brokers use the RPC API to communicate with each other internally.
+      - --rpc-addr redpanda-0:33145
+      - --advertise-rpc-addr redpanda-0:33145
+      # Mode dev-container uses well-known configuration properties for development in containers.
+      - --mode ${REDPANDA_MODE}
+      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
+      - --smp ${REDPANDA_SMP}
+      - --default-log-level=${REDPANDA_LOG_LEVEL}
+    image: ${REDPANDA_IMAGE}
+    container_name: redpanda-0
+    # Sets the username and password of the bootstrap SCRAM superuser
+    # See https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/manual/production/production-deployment/#bootstrap-a-user-account
+    environment:
+      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
+    volumes:
+      - redpanda-0:/var/lib/redpanda/data
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - ${REDPANDA_0_SCHEMA_PORT}:${REDPANDA_0_SCHEMA_PORT}
+      - ${REDPANDA_0_PROXY_PORT}:${REDPANDA_0_PROXY_PORT}
+      - ${REDPANDA_0_KAFKA_PORT}:${REDPANDA_0_KAFKA_PORT}
+      - ${REDPANDA_0_ADMIN_PORT}:9644
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
+      interval: 10s
+      timeout: 15s
+      retries: 10
+  redpanda-1:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_1_KAFKA_PORT}
+      - --advertise-kafka-addr internal://redpanda-1:9092,external://localhost:${REDPANDA_1_KAFKA_PORT}
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_1_PROXY_PORT}
+      - --advertise-pandaproxy-addr internal://redpanda-1:8082,external://localhost:${REDPANDA_1_PROXY_PORT}
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_1_SCHEMA_PORT}
+      - --rpc-addr redpanda-1:33145
+      - --advertise-rpc-addr redpanda-1:33145
+      - --mode ${REDPANDA_MODE}
+      - --smp ${REDPANDA_SMP}
+      - --default-log-level=${REDPANDA_LOG_LEVEL}
+      - --seeds redpanda-0:33145
+    image: ${REDPANDA_IMAGE}
+    container_name: redpanda-1
+    environment:
+      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
+    volumes:
+      - redpanda-1:/var/lib/redpanda/data
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - ${REDPANDA_1_SCHEMA_PORT}:${REDPANDA_1_SCHEMA_PORT}
+      - ${REDPANDA_1_PROXY_PORT}:${REDPANDA_1_PROXY_PORT}
+      - ${REDPANDA_1_KAFKA_PORT}:${REDPANDA_1_KAFKA_PORT}
+      - ${REDPANDA_1_ADMIN_PORT}:9644
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
+      interval: 10s
+      timeout: 15s
+      retries: 10
+    depends_on:
+      - redpanda-0
+  redpanda-2:
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_2_KAFKA_PORT}
+      - --advertise-kafka-addr internal://redpanda-2:9092,external://localhost:${REDPANDA_2_KAFKA_PORT}
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_2_PROXY_PORT}
+      - --advertise-pandaproxy-addr internal://redpanda-2:8082,external://localhost:${REDPANDA_2_PROXY_PORT}
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_2_SCHEMA_PORT}
+      - --rpc-addr redpanda-2:33145
+      - --advertise-rpc-addr redpanda-2:33145
+      - --mode ${REDPANDA_MODE}
+      - --smp ${REDPANDA_SMP}
+      - --default-log-level=${REDPANDA_LOG_LEVEL}
+      - --seeds redpanda-0:33145
+    image: ${REDPANDA_IMAGE}
+    container_name: redpanda-2
+    environment:
+      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
+    volumes:
+      - redpanda-2:/var/lib/redpanda/data
+      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+    networks:
+      - redpanda_network
+    ports:
+      - ${REDPANDA_2_SCHEMA_PORT}:${REDPANDA_2_SCHEMA_PORT}
+      - ${REDPANDA_2_PROXY_PORT}:${REDPANDA_2_PROXY_PORT}
+      - ${REDPANDA_2_KAFKA_PORT}:${REDPANDA_2_KAFKA_PORT}
+      - ${REDPANDA_2_ADMIN_PORT}:9644
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
+      interval: 10s
+      timeout: 15s
+      retries: 10
+    depends_on:
+      - redpanda-0
+  ####################
+  # Redpanda Console #
+  ####################
+  console:
+    container_name: redpanda-console
+    image: ${CONSOLE_IMAGE}
+    networks:
+      - redpanda_network
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml && /app/console'
+    volumes:
+      - ./config:/tmp/config/
+    environment:
+      CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/tmp/config.yml}
+      CONSOLE_CONFIG_FILE: |
+        # Configure a connection to the Redpanda cluster
+        # See https://docs.redpanda.com/current/console/config/connect-to-redpanda/
+        kafka:
+          brokers: ["redpanda-0:9092"]
+          sasl:
+            enabled: true
+            impersonateUser: true
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda-0:8081","http://redpanda-1:8081","http://redpanda-2:8081"]
+          authentication:
+            impersonateUser: true
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda-0:9644","http://redpanda-1:9644","http://redpanda-2:9644"]
+            authentication:
+              basic:
+                username: ${REDPANDA_SUPERUSER}
+                password: ${REDPANDA_PASSWORD}
+              impersonateUser: false
+        authentication:
+          jwtSigningKey: ${CONSOLE_JWT_SIGNING_KEY}
+          basic:
+            enabled: true
+        authorization:
+          roleBindings:
+          - roleName: admin
+            users:
+              - loginType: basic
+                name: ${REDPANDA_SUPERUSER}
+    ports:
+      - ${CONSOLE_PORT}:8080
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+      createtopic:
+        condition: service_completed_successfully
+      registerschema:
+        condition: service_completed_successfully
+  ####################
+  # rpk container to create raw-events and dlq topics #
+  # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-create/
+  ####################
+  createtopic:
+    image: ${REDPANDA_IMAGE}
+    networks:
+      - redpanda_network
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        rpk topic create ${RAW_EVENTS_TOPIC} \
+          --partitions ${RAW_EVENTS_PARTITIONS} \
+          --replicas ${RAW_EVENTS_REPLICAS} \
+          -c cleanup.policy=${RAW_EVENTS_CLEANUP_POLICY} \
+          -c retention.ms=${RAW_EVENTS_RETENTION_MS} \
+          -c retention.bytes=${RAW_EVENTS_RETENTION_BYTES} \
+          -c compression.type=${RAW_EVENTS_COMPRESSION} \
+          -X user=${REDPANDA_SUPERUSER} \
+          -X pass=${REDPANDA_PASSWORD} \
+          -X brokers=redpanda-0:9092 && \
+        rpk topic create ${DLQ_TOPIC} \
+          --partitions ${DLQ_PARTITIONS} \
+          --replicas ${DLQ_REPLICAS} \
+          -c cleanup.policy=${DLQ_CLEANUP_POLICY} \
+          -c retention.ms=${DLQ_RETENTION_MS} \
+          -c compression.type=${DLQ_COMPRESSION} \
+          -X user=${REDPANDA_SUPERUSER} \
+          -X pass=${REDPANDA_PASSWORD} \
+          -X brokers=redpanda-0:9092
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+  ####################
+  # rpk container to register the schema #
+  # See https://docs.redpanda.com/current/manage/schema-reg/schema-reg-api/
+  ####################
+  registerschema:
+    command:
+      - registry
+      - schema
+      - create
+      - ${RAW_EVENTS_TOPIC}
+      - --schema
+      - /etc/redpanda/raw-events-schema.json
+      - -X user=${REDPANDA_SUPERUSER}
+      - -X pass=${REDPANDA_PASSWORD}
+      - -X registry.hosts=redpanda-0:8081
+    image: ${REDPANDA_IMAGE}
+    # Mount the local directory that contains your schema to the container.
+    volumes:
+      - ./raw-events-schema.json:/etc/redpanda/raw-events-schema.json
+    networks:
+      - redpanda_network
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+  ####################
+  # rpk container to deploy a consumer group #
+  # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-consume/
+  ####################
+  consumergroup:
+    command:
+      - topic
+      - consume
+      - ${RAW_EVENTS_TOPIC}
+      - --group
+      - ${CONSUMER_GROUP}
+      - -X user=${REDPANDA_SUPERUSER}
+      - -X pass=${REDPANDA_PASSWORD}
+      - -X brokers=redpanda-0:9092
+    image: ${REDPANDA_IMAGE}
+    networks:
+      - redpanda_network
+    depends_on:
+      createtopic:
+        condition: service_completed_successfully

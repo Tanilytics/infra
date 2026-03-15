@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RawEvent",
+  "description": "A single analytics event on the raw-events Kafka topic.",
+  "type": "object",
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "UUID v7 uniquely identifying this event."
+    },
+    "site_id": {
+      "type": "string",
+      "description": "Identifier of the site that produced the event; used as the Kafka message key."
+    },
+    "visitor_id": {
+      "type": "string",
+      "description": "Anonymous or authenticated visitor identifier."
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Type of event (e.g. page_view, click, custom)."
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Client-side event timestamp in milliseconds since Unix epoch."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Full URL of the page where the event occurred."
+    },
+    "referrer": {
+      "type": "string",
+      "description": "HTTP Referer header value; empty string if none."
+    },
+    "utm_source": {
+      "type": "string",
+      "description": "UTM source parameter."
+    },
+    "utm_medium": {
+      "type": "string",
+      "description": "UTM medium parameter."
+    },
+    "utm_campaign": {
+      "type": "string",
+      "description": "UTM campaign parameter."
+    },
+    "session_context": {
+      "type": "object",
+      "description": "Browser/device context collected at the time of the event.",
+      "properties": {
+        "screen_width": {
+          "type": "integer",
+          "description": "Screen width in pixels."
+        },
+        "screen_height": {
+          "type": "integer",
+          "description": "Screen height in pixels."
+        },
+        "language": {
+          "type": "string",
+          "description": "Browser language (BCP 47 tag)."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA timezone name."
+        }
+      },
+      "required": ["screen_width", "screen_height", "language", "timezone"],
+      "additionalProperties": false
+    },
+    "properties": {
+      "type": "object",
+      "description": "Arbitrary custom properties attached to the event.",
+      "additionalProperties": true
+    },
+    "server_timestamp": {
+      "type": "integer",
+      "description": "Server-side ingestion timestamp in milliseconds since Unix epoch."
+    },
+    "ip": {
+      "type": "string",
+      "description": "Client IP address as seen by the ingest server."
+    },
+    "user_agent": {
+      "type": "string",
+      "description": "Raw User-Agent string from the HTTP request."
+    }
+  },
+  "required": [
+    "event_id",
+    "site_id",
+    "visitor_id",
+    "event_type",
+    "timestamp",
+    "url",
+    "referrer",
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "session_context",
+    "properties",
+    "server_timestamp",
+    "ip",
+    "user_agent"
+  ],
+  "additionalProperties": false
+}
