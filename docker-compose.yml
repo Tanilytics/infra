@@ -14,43 +14,43 @@ services:
     command:
       - redpanda
       - start
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_0_KAFKA_PORT}
       # Address the broker advertises to clients that connect to the Kafka API.
       # Use the internal addresses to connect to the Redpanda brokers
       # from inside the same Docker network.
       # Use the external addresses to connect to the Redpanda brokers
       # from outside the Docker network.
-      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:19092
-      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:${REDPANDA_0_KAFKA_PORT}
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_0_PROXY_PORT}
       # Address the broker advertises to clients that connect to the HTTP Proxy.
-      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:18082
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:${REDPANDA_0_PROXY_PORT}
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_0_SCHEMA_PORT}
       # Redpanda brokers use the RPC API to communicate with each other internally.
       - --rpc-addr redpanda-0:33145
       - --advertise-rpc-addr redpanda-0:33145
       # Mode dev-container uses well-known configuration properties for development in containers.
-      - --mode dev-container
+      - --mode ${REDPANDA_MODE}
       # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
-      - --smp 1
-      - --default-log-level=info
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+      - --smp ${REDPANDA_SMP}
+      - --default-log-level=${REDPANDA_LOG_LEVEL}
+    image: ${REDPANDA_IMAGE}
     container_name: redpanda-0
     # Sets the username and password of the bootstrap SCRAM superuser
     # See https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/manual/production/production-deployment/#bootstrap-a-user-account
     environment:
-      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
     volumes:
       - redpanda-0:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
     networks:
       - redpanda_network
     ports:
-      - 18081:18081
-      - 18082:18082
-      - 19092:19092
-      - 19644:9644
+      - ${REDPANDA_0_SCHEMA_PORT}:${REDPANDA_0_SCHEMA_PORT}
+      - ${REDPANDA_0_PROXY_PORT}:${REDPANDA_0_PROXY_PORT}
+      - ${REDPANDA_0_KAFKA_PORT}:${REDPANDA_0_KAFKA_PORT}
+      - ${REDPANDA_0_ADMIN_PORT}:9644
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
       interval: 10s
       timeout: 15s
       retries: 10
@@ -58,33 +58,33 @@ services:
     command:
       - redpanda
       - start
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:29092
-      - --advertise-kafka-addr internal://redpanda-1:9092,external://localhost:29092
-      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:28082
-      - --advertise-pandaproxy-addr internal://redpanda-1:8082,external://localhost:28082
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:28081
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_1_KAFKA_PORT}
+      - --advertise-kafka-addr internal://redpanda-1:9092,external://localhost:${REDPANDA_1_KAFKA_PORT}
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_1_PROXY_PORT}
+      - --advertise-pandaproxy-addr internal://redpanda-1:8082,external://localhost:${REDPANDA_1_PROXY_PORT}
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_1_SCHEMA_PORT}
       - --rpc-addr redpanda-1:33145
       - --advertise-rpc-addr redpanda-1:33145
-      - --mode dev-container
-      - --smp 1
-      - --default-log-level=info
+      - --mode ${REDPANDA_MODE}
+      - --smp ${REDPANDA_SMP}
+      - --default-log-level=${REDPANDA_LOG_LEVEL}
       - --seeds redpanda-0:33145
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+    image: ${REDPANDA_IMAGE}
     container_name: redpanda-1
     environment:
-      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
     volumes:
       - redpanda-1:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
     networks:
       - redpanda_network
     ports:
-      - 28081:28081
-      - 28082:28082
-      - 29092:29092
-      - 29644:9644
+      - ${REDPANDA_1_SCHEMA_PORT}:${REDPANDA_1_SCHEMA_PORT}
+      - ${REDPANDA_1_PROXY_PORT}:${REDPANDA_1_PROXY_PORT}
+      - ${REDPANDA_1_KAFKA_PORT}:${REDPANDA_1_KAFKA_PORT}
+      - ${REDPANDA_1_ADMIN_PORT}:9644
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
       interval: 10s
       timeout: 15s
       retries: 10
@@ -94,33 +94,33 @@ services:
     command:
       - redpanda
       - start
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:39092
-      - --advertise-kafka-addr internal://redpanda-2:9092,external://localhost:39092
-      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:38082
-      - --advertise-pandaproxy-addr internal://redpanda-2:8082,external://localhost:38082
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:38081
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_2_KAFKA_PORT}
+      - --advertise-kafka-addr internal://redpanda-2:9092,external://localhost:${REDPANDA_2_KAFKA_PORT}
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_2_PROXY_PORT}
+      - --advertise-pandaproxy-addr internal://redpanda-2:8082,external://localhost:${REDPANDA_2_PROXY_PORT}
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_2_SCHEMA_PORT}
       - --rpc-addr redpanda-2:33145
       - --advertise-rpc-addr redpanda-2:33145
-      - --mode dev-container
-      - --smp 1
-      - --default-log-level=info
+      - --mode ${REDPANDA_MODE}
+      - --smp ${REDPANDA_SMP}
+      - --default-log-level=${REDPANDA_LOG_LEVEL}
       - --seeds redpanda-0:33145
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+    image: ${REDPANDA_IMAGE}
     container_name: redpanda-2
     environment:
-      RP_BOOTSTRAP_USER: "superuser:secretpassword"
+      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
     volumes:
       - redpanda-2:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
     networks:
       - redpanda_network
     ports:
-      - 38081:38081
-      - 38082:38082
-      - 39092:39092
-      - 39644:9644
+      - ${REDPANDA_2_SCHEMA_PORT}:${REDPANDA_2_SCHEMA_PORT}
+      - ${REDPANDA_2_PROXY_PORT}:${REDPANDA_2_PROXY_PORT}
+      - ${REDPANDA_2_KAFKA_PORT}:${REDPANDA_2_KAFKA_PORT}
+      - ${REDPANDA_2_ADMIN_PORT}:9644
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info", "-X", "user=superuser", "-X", "pass=secretpassword"]
+      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
       interval: 10s
       timeout: 15s
       retries: 10
@@ -131,7 +131,7 @@ services:
   ####################
   console:
     container_name: redpanda-console
-    image: docker.redpanda.com/redpandadata/console:v3.6.0
+    image: ${CONSOLE_IMAGE}
     networks:
       - redpanda_network
     entrypoint: /bin/sh
@@ -159,22 +159,11 @@ services:
             urls: ["http://redpanda-0:9644","http://redpanda-1:9644","http://redpanda-2:9644"]
             authentication:
               basic:
-                username: superuser
-                password: secretpassword
+                username: ${REDPANDA_SUPERUSER}
+                password: ${REDPANDA_PASSWORD}
               impersonateUser: false
-        console:
-          # Configures Redpanda Console to fetch topic documentation from GitHub and display it in the UI.
-          # See https://docs.redpanda.com/current/console/config/topic-documentation/
-          topicDocumentation:
-            enabled: true
-            git:
-              enabled: true
-              repository:
-                url: https://github.com/redpanda-data/docs
-                branch: main
-                baseDirectory: tests/docker-compose
         authentication:
-          jwtSigningKey: vazxnT+ZHtxKslK6QlDGovcYnSjTk/lKMmZ+mHrBVE+YdVDkLgSuP6AszAKe9Gvq
+          jwtSigningKey: ${CONSOLE_JWT_SIGNING_KEY}
           basic:
             enabled: true
         authorization:
@@ -182,9 +171,9 @@ services:
           - roleName: admin
             users:
               - loginType: basic
-                name: superuser
+                name: ${REDPANDA_SUPERUSER}
     ports:
-      - 8080:8080
+      - ${CONSOLE_PORT}:8080
     depends_on:
       redpanda-0:
         condition: service_healthy
@@ -197,31 +186,31 @@ services:
   # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-create/
   ####################
   createtopic:
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+    image: ${REDPANDA_IMAGE}
     networks:
       - redpanda_network
     entrypoint: /bin/sh
     command:
       - -c
       - |
-        rpk topic create raw-events \
-          --partitions 12 \
-          --replicas 1 \
-          -c cleanup.policy=delete \
-          -c retention.ms=259200000 \
-          -c retention.bytes=-1 \
-          -c compression.type=lz4 \
-          -X user=superuser \
-          -X pass=secretpassword \
+        rpk topic create ${RAW_EVENTS_TOPIC} \
+          --partitions ${RAW_EVENTS_PARTITIONS} \
+          --replicas ${RAW_EVENTS_REPLICAS} \
+          -c cleanup.policy=${RAW_EVENTS_CLEANUP_POLICY} \
+          -c retention.ms=${RAW_EVENTS_RETENTION_MS} \
+          -c retention.bytes=${RAW_EVENTS_RETENTION_BYTES} \
+          -c compression.type=${RAW_EVENTS_COMPRESSION} \
+          -X user=${REDPANDA_SUPERUSER} \
+          -X pass=${REDPANDA_PASSWORD} \
           -X brokers=redpanda-0:9092 && \
-        rpk topic create dlq \
-          --partitions 1 \
-          --replicas 1 \
-          -c cleanup.policy=delete \
-          -c retention.ms=604800000 \
-          -c compression.type=none \
-          -X user=superuser \
-          -X pass=secretpassword \
+        rpk topic create ${DLQ_TOPIC} \
+          --partitions ${DLQ_PARTITIONS} \
+          --replicas ${DLQ_REPLICAS} \
+          -c cleanup.policy=${DLQ_CLEANUP_POLICY} \
+          -c retention.ms=${DLQ_RETENTION_MS} \
+          -c compression.type=${DLQ_COMPRESSION} \
+          -X user=${REDPANDA_SUPERUSER} \
+          -X pass=${REDPANDA_PASSWORD} \
           -X brokers=redpanda-0:9092
     depends_on:
       redpanda-0:
@@ -235,13 +224,13 @@ services:
       - registry
       - schema
       - create
-      - raw-events
+      - ${RAW_EVENTS_TOPIC}
       - --schema
       - /etc/redpanda/raw-events-schema.json
-      - -X user=superuser
-      - -X pass=secretpassword
+      - -X user=${REDPANDA_SUPERUSER}
+      - -X pass=${REDPANDA_PASSWORD}
       - -X registry.hosts=redpanda-0:8081
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+    image: ${REDPANDA_IMAGE}
     # Mount the local directory that contains your schema to the container.
     volumes:
       - ./raw-events-schema.json:/etc/redpanda/raw-events-schema.json
@@ -258,13 +247,13 @@ services:
     command:
       - topic
       - consume
-      - raw-events
+      - ${RAW_EVENTS_TOPIC}
       - --group
-      - event-processor
-      - -X user=superuser
-      - -X pass=secretpassword
+      - ${CONSUMER_GROUP}
+      - -X user=${REDPANDA_SUPERUSER}
+      - -X pass=${REDPANDA_PASSWORD}
       - -X brokers=redpanda-0:9092
-    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+    image: ${REDPANDA_IMAGE}
     networks:
       - redpanda_network
     depends_on:
