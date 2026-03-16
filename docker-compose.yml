@@ -6,6 +6,7 @@ volumes:
   redpanda-0: null
   redpanda-1: null
   redpanda-2: null
+  redis-data: null
 services:
   ##################
   # Redpanda Brokers #
@@ -181,6 +182,23 @@ services:
         condition: service_completed_successfully
       registerschema:
         condition: service_completed_successfully
+  ############
+  # Redis #
+  ############
+  redis:
+    image: ${REDIS_IMAGE}
+    container_name: redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - redpanda_network
+    ports:
+      - ${REDIS_PORT}:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   ####################
   # rpk container to create raw-events and dlq topics #
   # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-create/
