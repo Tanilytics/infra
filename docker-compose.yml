@@ -1,6 +1,6 @@
 name: tanilytics
 networks:
-  redpanda_network:
+  tanilytics_network:
     driver: bridge
 volumes:
   redpanda-0: null
@@ -44,7 +44,7 @@ services:
       - redpanda-0:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
     networks:
-      - redpanda_network
+      - tanilytics_network
     ports:
       - ${REDPANDA_0_SCHEMA_PORT}:${REDPANDA_0_SCHEMA_PORT}
       - ${REDPANDA_0_PROXY_PORT}:${REDPANDA_0_PROXY_PORT}
@@ -78,7 +78,7 @@ services:
       - redpanda-1:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
     networks:
-      - redpanda_network
+      - tanilytics_network
     ports:
       - ${REDPANDA_1_SCHEMA_PORT}:${REDPANDA_1_SCHEMA_PORT}
       - ${REDPANDA_1_PROXY_PORT}:${REDPANDA_1_PROXY_PORT}
@@ -114,7 +114,7 @@ services:
       - redpanda-2:/var/lib/redpanda/data
       - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
     networks:
-      - redpanda_network
+      - tanilytics_network
     ports:
       - ${REDPANDA_2_SCHEMA_PORT}:${REDPANDA_2_SCHEMA_PORT}
       - ${REDPANDA_2_PROXY_PORT}:${REDPANDA_2_PROXY_PORT}
@@ -134,7 +134,7 @@ services:
     container_name: redpanda-console
     image: ${CONSOLE_IMAGE}
     networks:
-      - redpanda_network
+      - tanilytics_network
     entrypoint: /bin/sh
     command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml && /app/console'
     volumes:
@@ -191,7 +191,7 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - redpanda_network
+      - tanilytics_network
     ports:
       - ${REDIS_PORT}:6379
     healthcheck:
@@ -206,7 +206,7 @@ services:
   createtopic:
     image: ${REDPANDA_IMAGE}
     networks:
-      - redpanda_network
+      - tanilytics_network
     entrypoint: /bin/sh
     command:
       - -c
@@ -253,7 +253,7 @@ services:
     volumes:
       - ./raw-events-schema.json:/etc/redpanda/raw-events-schema.json
     networks:
-      - redpanda_network
+      - tanilytics_network
     depends_on:
       redpanda-0:
         condition: service_healthy
@@ -273,7 +273,34 @@ services:
       - -X brokers=redpanda-0:9092
     image: ${REDPANDA_IMAGE}
     networks:
-      - redpanda_network
+      - tanilytics_network
     depends_on:
       createtopic:
         condition: service_completed_successfully
+  ###############
+  # Ingestion #
+  ###############
+  ingestion:
+    build:
+      context: ../ingestion
+      dockerfile: Dockerfile
+    container_name: ingestion
+    networks:
+      - tanilytics_network
+    ports:
+      - "${INGESTION_PORT}:3000"
+    environment:
+      - INGESTION_PORT=${INGESTION_PORT}
+      - REDPANDA_BROKERS=${REDPANDA_BROKERS}
+      - REDPANDA_SASL_USER=${REDPANDA_SASL_USER}
+      - REDPANDA_SASL_PASSWORD=${REDPANDA_SASL_PASSWORD}
+      - REDPANDA_SASL_MECHANISM=${REDPANDA_SASL_MECHANISM}
+      - REDIS_URL=${REDIS_URL}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - BLOOM_FILTER_CAPACITY=${BLOOM_FILTER_CAPACITY}
+      - BLOOM_FILTER_ERROR_RATE=${BLOOM_FILTER_ERROR_RATE}
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
