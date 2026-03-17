@@ -277,3 +277,30 @@ services:
     depends_on:
       createtopic:
         condition: service_completed_successfully
+  ###############
+  # Ingestion #
+  ###############
+  ingestion:
+    build:
+      context: ../ingestion
+      dockerfile: Dockerfile
+    container_name: ingestion
+    networks:
+      - redpanda_network
+    ports:
+      - "${INGESTION_PORT}:3000"
+    environment:
+      - INGESTION_PORT=${INGESTION_PORT}
+      - REDPANDA_BROKERS=${REDPANDA_BROKERS}
+      - REDPANDA_SASL_USER=${REDPANDA_SASL_USER}
+      - REDPANDA_SASL_PASSWORD=${REDPANDA_SASL_PASSWORD}
+      - REDPANDA_SASL_MECHANISM=${REDPANDA_SASL_MECHANISM}
+      - REDIS_URL=${REDIS_URL}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - BLOOM_FILTER_CAPACITY=${BLOOM_FILTER_CAPACITY}
+      - BLOOM_FILTER_ERROR_RATE=${BLOOM_FILTER_ERROR_RATE}
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
