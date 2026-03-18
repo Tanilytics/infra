@@ -277,6 +277,30 @@ services:
     depends_on:
       createtopic:
         condition: service_completed_successfully
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus-config.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - tanilytics_network
+    ports:
+      - "9090:9090"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - tanilytics_network
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+
   ###############
   # Ingestion #
   ###############
@@ -299,6 +323,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL}
       - BLOOM_FILTER_CAPACITY=${BLOOM_FILTER_CAPACITY}
       - BLOOM_FILTER_ERROR_RATE=${BLOOM_FILTER_ERROR_RATE}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
     depends_on:
       redpanda-0:
         condition: service_healthy
