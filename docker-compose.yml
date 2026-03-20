@@ -351,6 +351,7 @@ services:
     networks:
       - tanilytics_network
     environment:
+      - PROCESSING_PORT=${INGESTION_PORT}
       - REDPANDA_BROKERS=${REDPANDA_BROKERS}
       - REDPANDA_SASL_USER=${REDPANDA_SASL_USER}
       - REDPANDA_SASL_PASSWORD=${REDPANDA_SASL_PASSWORD}
@@ -358,6 +359,7 @@ services:
       - REDIS_URL=${REDIS_URL}
       - LOG_LEVEL=${LOG_LEVEL}
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - CONSUMER_GROUP=${CONSUMER_GROUP}
     depends_on:
       redpanda-0:
         condition: service_healthy
