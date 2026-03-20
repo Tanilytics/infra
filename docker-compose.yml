@@ -51,7 +51,17 @@ services:
       - ${REDPANDA_0_KAFKA_PORT}:${REDPANDA_0_KAFKA_PORT}
       - ${REDPANDA_0_ADMIN_PORT}:9644
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "rpk",
+          "cluster",
+          "info",
+          "-X",
+          "user=${REDPANDA_SUPERUSER}",
+          "-X",
+          "pass=${REDPANDA_PASSWORD}",
+        ]
       interval: 10s
       timeout: 15s
       retries: 10
@@ -85,7 +95,17 @@ services:
       - ${REDPANDA_1_KAFKA_PORT}:${REDPANDA_1_KAFKA_PORT}
       - ${REDPANDA_1_ADMIN_PORT}:9644
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "rpk",
+          "cluster",
+          "info",
+          "-X",
+          "user=${REDPANDA_SUPERUSER}",
+          "-X",
+          "pass=${REDPANDA_PASSWORD}",
+        ]
       interval: 10s
       timeout: 15s
       retries: 10
@@ -121,7 +141,17 @@ services:
       - ${REDPANDA_2_KAFKA_PORT}:${REDPANDA_2_KAFKA_PORT}
       - ${REDPANDA_2_ADMIN_PORT}:9644
     healthcheck:
-      test: ["CMD", "rpk", "cluster", "info", "-X", "user=${REDPANDA_SUPERUSER}", "-X", "pass=${REDPANDA_PASSWORD}"]
+      test:
+        [
+          "CMD",
+          "rpk",
+          "cluster",
+          "info",
+          "-X",
+          "user=${REDPANDA_SUPERUSER}",
+          "-X",
+          "pass=${REDPANDA_PASSWORD}",
+        ]
       interval: 10s
       timeout: 15s
       retries: 10
@@ -257,33 +287,13 @@ services:
     depends_on:
       redpanda-0:
         condition: service_healthy
-  ####################
-  # rpk container to deploy a consumer group #
-  # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-consume/
-  ####################
-  consumergroup:
-    command:
-      - topic
-      - consume
-      - ${RAW_EVENTS_TOPIC}
-      - --group
-      - ${CONSUMER_GROUP}
-      - -X user=${REDPANDA_SUPERUSER}
-      - -X pass=${REDPANDA_PASSWORD}
-      - -X brokers=redpanda-0:9092
-    image: ${REDPANDA_IMAGE}
-    networks:
-      - tanilytics_network
-    depends_on:
-      createtopic:
-        condition: service_completed_successfully
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
       - ./prometheus-config.yml:/etc/prometheus/prometheus.yml
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
+      - "--config.file=/etc/prometheus/prometheus.yml"
     networks:
       - tanilytics_network
     ports:
@@ -324,6 +334,32 @@ services:
       - BLOOM_FILTER_CAPACITY=${BLOOM_FILTER_CAPACITY}
       - BLOOM_FILTER_ERROR_RATE=${BLOOM_FILTER_ERROR_RATE}
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+    depends_on:
+      redpanda-0:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ################
+  # Processing #
+  ################
+  processing:
+    build:
+      context: ../processing
+      dockerfile: Dockerfile
+    container_name: processing
+    networks:
+      - tanilytics_network
+    environment:
+      - PROCESSING_PORT=${INGESTION_PORT}
+      - REDPANDA_BROKERS=${REDPANDA_BROKERS}
+      - REDPANDA_SASL_USER=${REDPANDA_SASL_USER}
+      - REDPANDA_SASL_PASSWORD=${REDPANDA_SASL_PASSWORD}
+      - REDPANDA_SASL_MECHANISM=${REDPANDA_SASL_MECHANISM}
+      - REDIS_URL=${REDIS_URL}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
+      - CONSUMER_GROUP=${CONSUMER_GROUP}
     depends_on:
       redpanda-0:
         condition: service_healthy
