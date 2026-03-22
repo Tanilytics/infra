@@ -339,10 +339,8 @@ services:
       - "9090:9090"
 
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/jaeger:2.16.0
     container_name: jaeger
-    environment:
-      - COLLECTOR_OTLP_ENABLED=true
     networks:
       - tanilytics_network
     ports:
