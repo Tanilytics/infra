@@ -236,6 +236,11 @@ services:
   clickhouse:
     image: ${CLICKHOUSE_IMAGE}
     container_name: clickhouse
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: ${CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT}
     ulimits:
       nofile:
         soft: 262144
@@ -245,8 +250,8 @@ services:
     networks:
       - tanilytics_network
     ports:
-      - ${CLICKHOUSE_HTTP_PORT:-8123}:8123
-      - ${CLICKHOUSE_TCP_PORT:-9000}:9000
+      - ${CLICKHOUSE_HTTP_PORT}:8123
+      - ${CLICKHOUSE_TCP_PORT}:9000
     healthcheck:
       test:
         [
@@ -254,6 +259,9 @@ services:
           "clickhouse-client",
           "--host",
           "127.0.0.1",
+          "--user=${CLICKHOUSE_USERNAME}",
+          "--password=${CLICKHOUSE_PASSWORD}",
+          "--database=${CLICKHOUSE_DATABASE}",
           "--query",
           "SELECT 1",
         ]
@@ -382,16 +390,19 @@ services:
     networks:
       - tanilytics_network
     environment:
-      - PROCESSING_PORT=${PROCESSING_PORT:-:3000}
+      - PROCESSING_PORT=${PROCESSING_PORT}
       - REDPANDA_BROKERS=${REDPANDA_BROKERS}
       - REDPANDA_SASL_USER=${REDPANDA_SASL_USER}
       - REDPANDA_SASL_PASSWORD=${REDPANDA_SASL_PASSWORD}
       - REDPANDA_SASL_MECHANISM=${REDPANDA_SASL_MECHANISM}
-      - CLICKHOUSE_ADDR=${CLICKHOUSE_ADDR:-clickhouse:9000}
-      - CH_BATCH_SIZE=${CH_BATCH_SIZE:-10000}
-      - CH_BATCH_TIMEOUT=${CH_BATCH_TIMEOUT:-5s}
+      - CLICKHOUSE_ADDR=${CLICKHOUSE_ADDR}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE}
+      - CLICKHOUSE_USERNAME=${CLICKHOUSE_USERNAME}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CH_BATCH_SIZE=${CH_BATCH_SIZE}
+      - CH_BATCH_TIMEOUT=${CH_BATCH_TIMEOUT}
       - REDIS_URL=${REDIS_URL}
-      - ANONYMIZATION_SALT=${ANONYMIZATION_SALT:-change-me}
+      - ANONYMIZATION_SALT=${ANONYMIZATION_SALT}
       - LOG_LEVEL=${LOG_LEVEL}
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
       - CONSUMER_GROUP=${CONSUMER_GROUP}

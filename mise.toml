@@ -1,0 +1,25 @@
+[tools]
+"aqua:golang-migrate/migrate" = "4.19.1"
+
+[env]
+_.file = { path = ".env" }
+
+[tasks.migrate-create]
+description = "Create a new SQL migration"
+usage = '''
+arg "<name>" help="Migration name, e.g. add_sessions_table"
+'''
+run = 'migrate create -ext sql -dir ./migrations -seq -digits 6 "${usage_name}"'
+
+[tasks.migrate-up]
+description = "Apply all up migrations"
+run = '''migrate -verbose -path ./migrations -database "$CLICKHOUSE_MIGRATIONS_URL" up'''
+
+[tasks.migrate-down]
+description = "Rollback the latest migration"
+run = '''migrate -verbose -path ./migrations -database "$CLICKHOUSE_MIGRATIONS_URL" down 1'''
+
+[tasks.migrate-version]
+description = "Show current migration version"
+run = '''migrate -verbose -path ./migrations -database "$CLICKHOUSE_MIGRATIONS_URL" version'''
+
