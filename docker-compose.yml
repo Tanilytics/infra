@@ -6,6 +6,7 @@ volumes:
   redpanda-0: null
   redpanda-1: null
   redpanda-2: null
+  postgres-data: null
   redis-data: null
   clickhouse-data: null
 services:
@@ -268,6 +269,86 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+  ################
+  # PostgreSQL #
+  ################
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - tanilytics_network
+    ports:
+      - ${POSTGRES_PORT}:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+  ###################
+  # Auth Service #
+  ###################
+  auth-service:
+    build:
+      context: ../auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY}
+      JWT_INTERNAL_AUDIENCE: ${JWT_INTERNAL_AUDIENCE}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${JAVA_OTEL_EXPORTER_OTLP_ENDPOINT}
+    networks:
+      - tanilytics_network
+    ports:
+      - ${AUTH_SERVICE_PORT}:8082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  ####################
+  # Query Service #
+  ####################
+  query-service:
+    build:
+      context: ../query-service
+      dockerfile: Dockerfile
+    container_name: query-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123/${CLICKHOUSE_DATABASE}
+      CLICKHOUSE_USERNAME: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${JAVA_OTEL_EXPORTER_OTLP_ENDPOINT}
+    networks:
+      - tanilytics_network
+    ports:
+      - ${QUERY_SERVICE_PORT}:8081
+    depends_on:
+      redis:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
   ####################
   # rpk container to create raw-events and dlq topics #
   # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-create/
