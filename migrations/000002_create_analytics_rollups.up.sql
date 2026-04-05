@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS analytics.site_metrics_hourly
+CREATE TABLE IF NOT EXISTS analytics.site_metrics_hourly_state
 (
     site_id String,
     hour DateTime,
@@ -11,7 +11,7 @@ PARTITION BY (toYYYYMM(hour), site_id)
 ORDER BY (site_id, hour);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_site_metrics_hourly
-TO analytics.site_metrics_hourly
+TO analytics.site_metrics_hourly_state
 AS
 SELECT
     site_id,
@@ -23,7 +23,17 @@ FROM analytics.events
 WHERE event_type = 'page_view'
 GROUP BY site_id, hour;
 
-CREATE TABLE IF NOT EXISTS analytics.page_views_hourly
+CREATE VIEW IF NOT EXISTS analytics.site_metrics_hourly AS
+SELECT
+    site_id,
+    hour,
+    sum(page_views) AS page_views,
+    uniqMerge(unique_visitors) AS unique_visitors,
+    uniqMerge(unique_sessions) AS unique_sessions
+FROM analytics.site_metrics_hourly_state
+GROUP BY site_id, hour;
+
+CREATE TABLE IF NOT EXISTS analytics.page_views_hourly_state
 (
     site_id String,
     hour DateTime,
@@ -60,7 +70,7 @@ ORDER BY
 );
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_page_views_hourly
-TO analytics.page_views_hourly
+TO analytics.page_views_hourly_state
 AS
 SELECT
     site_id,
@@ -94,7 +104,39 @@ GROUP BY
     utm_medium,
     utm_campaign;
 
-CREATE TABLE IF NOT EXISTS analytics.referrers_daily
+CREATE VIEW IF NOT EXISTS analytics.page_views_hourly AS
+SELECT
+    site_id,
+    hour,
+    url,
+    referrer,
+    country,
+    region,
+    device_type,
+    browser,
+    os,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    sum(views) AS views,
+    uniqMerge(unique_visitors) AS unique_visitors,
+    uniqMerge(unique_sessions) AS unique_sessions
+FROM analytics.page_views_hourly_state
+GROUP BY
+    site_id,
+    hour,
+    url,
+    referrer,
+    country,
+    region,
+    device_type,
+    browser,
+    os,
+    utm_source,
+    utm_medium,
+    utm_campaign;
+
+CREATE TABLE IF NOT EXISTS analytics.referrers_daily_state
 (
     site_id String,
     day Date,
@@ -108,7 +150,7 @@ PARTITION BY (toYYYYMM(day), site_id)
 ORDER BY (site_id, day, referrer);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_referrers_daily
-TO analytics.referrers_daily
+TO analytics.referrers_daily_state
 AS
 SELECT
     site_id,
@@ -121,7 +163,18 @@ FROM analytics.events
 WHERE event_type = 'page_view'
 GROUP BY site_id, day, referrer;
 
-CREATE TABLE IF NOT EXISTS analytics.country_breakdown_daily
+CREATE VIEW IF NOT EXISTS analytics.referrers_daily AS
+SELECT
+    site_id,
+    day,
+    referrer,
+    sum(views) AS views,
+    uniqMerge(unique_visitors) AS unique_visitors,
+    uniqMerge(unique_sessions) AS unique_sessions
+FROM analytics.referrers_daily_state
+GROUP BY site_id, day, referrer;
+
+CREATE TABLE IF NOT EXISTS analytics.country_breakdown_daily_state
 (
     site_id String,
     day Date,
@@ -136,7 +189,7 @@ PARTITION BY (toYYYYMM(day), site_id)
 ORDER BY (site_id, day, country, region);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_country_breakdown_daily
-TO analytics.country_breakdown_daily
+TO analytics.country_breakdown_daily_state
 AS
 SELECT
     site_id,
@@ -150,7 +203,19 @@ FROM analytics.events
 WHERE event_type = 'page_view'
 GROUP BY site_id, day, country, region;
 
-CREATE TABLE IF NOT EXISTS analytics.device_breakdown_daily
+CREATE VIEW IF NOT EXISTS analytics.country_breakdown_daily AS
+SELECT
+    site_id,
+    day,
+    country,
+    region,
+    sum(page_views) AS page_views,
+    uniqMerge(unique_visitors) AS unique_visitors,
+    uniqMerge(unique_sessions) AS unique_sessions
+FROM analytics.country_breakdown_daily_state
+GROUP BY site_id, day, country, region;
+
+CREATE TABLE IF NOT EXISTS analytics.device_breakdown_daily_state
 (
     site_id String,
     day Date,
@@ -166,7 +231,7 @@ PARTITION BY (toYYYYMM(day), site_id)
 ORDER BY (site_id, day, device_type, browser, os);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_device_breakdown_daily
-TO analytics.device_breakdown_daily
+TO analytics.device_breakdown_daily_state
 AS
 SELECT
     site_id,
@@ -181,7 +246,20 @@ FROM analytics.events
 WHERE event_type = 'page_view'
 GROUP BY site_id, day, device_type, browser, os;
 
-CREATE TABLE IF NOT EXISTS analytics.campaigns_daily
+CREATE VIEW IF NOT EXISTS analytics.device_breakdown_daily AS
+SELECT
+    site_id,
+    day,
+    device_type,
+    browser,
+    os,
+    sum(page_views) AS page_views,
+    uniqMerge(unique_visitors) AS unique_visitors,
+    uniqMerge(unique_sessions) AS unique_sessions
+FROM analytics.device_breakdown_daily_state
+GROUP BY site_id, day, device_type, browser, os;
+
+CREATE TABLE IF NOT EXISTS analytics.campaigns_daily_state
 (
     site_id String,
     day Date,
@@ -197,7 +275,7 @@ PARTITION BY (toYYYYMM(day), site_id)
 ORDER BY (site_id, day, utm_source, utm_medium, utm_campaign);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_campaigns_daily
-TO analytics.campaigns_daily
+TO analytics.campaigns_daily_state
 AS
 SELECT
     site_id,
@@ -212,7 +290,20 @@ FROM analytics.events
 WHERE event_type = 'page_view'
 GROUP BY site_id, day, utm_source, utm_medium, utm_campaign;
 
-CREATE TABLE IF NOT EXISTS analytics.page_engagement_daily
+CREATE VIEW IF NOT EXISTS analytics.campaigns_daily AS
+SELECT
+    site_id,
+    day,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    sum(page_views) AS page_views,
+    uniqMerge(unique_visitors) AS unique_visitors,
+    uniqMerge(unique_sessions) AS unique_sessions
+FROM analytics.campaigns_daily_state
+GROUP BY site_id, day, utm_source, utm_medium, utm_campaign;
+
+CREATE TABLE IF NOT EXISTS analytics.page_engagement_daily_state
 (
     site_id String,
     day Date,
@@ -226,7 +317,7 @@ PARTITION BY (toYYYYMM(day), site_id)
 ORDER BY (site_id, day, url);
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS analytics.mv_page_engagement_daily
-TO analytics.page_engagement_daily
+TO analytics.page_engagement_daily_state
 AS
 SELECT
     site_id,
@@ -241,4 +332,15 @@ SELECT
     ) AS avg_scroll_depth_pct
 FROM analytics.events
 WHERE event_type = 'page_leave'
+GROUP BY site_id, day, url;
+
+CREATE VIEW IF NOT EXISTS analytics.page_engagement_daily AS
+SELECT
+    site_id,
+    day,
+    url,
+    sum(page_leaves) AS page_leaves,
+    avgMerge(avg_time_on_page_ms) AS avg_time_on_page_ms,
+    avgMerge(avg_scroll_depth_pct) AS avg_scroll_depth_pct
+FROM analytics.page_engagement_daily_state
 GROUP BY site_id, day, url;
