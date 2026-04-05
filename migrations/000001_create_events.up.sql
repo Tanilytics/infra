@@ -1,4 +1,6 @@
-CREATE TABLE IF NOT EXISTS default.events
+CREATE DATABASE IF NOT EXISTS analytics;
+
+CREATE TABLE IF NOT EXISTS analytics.events
 (
     event_id UUID,
     site_id String,
