@@ -10,10 +10,52 @@ This directory contains the Docker Compose configuration for the Tanilytics loca
    cp .env.example .env
    ```
 
-2. Start the cluster:
-   ```bash
-   docker compose up -d
-   ```
+2. Start the full local stack:
+    ```bash
+    docker compose up -d
+    ```
+
+## Dev Pipeline Compose
+
+`docker-compose.dev.yml` mirrors the main compose stack, but replaces the three-node Redpanda cluster with a single `redpanda-0` broker.
+
+The `pipeline` profile enables only the data pipeline services:
+
+- `redpanda-0`
+- `console`
+- `createtopic`
+- `redis`
+- `clickhouse`
+- `ingestion`
+- `processing`
+
+Start only the pipeline with:
+
+```bash
+docker compose -f docker-compose.dev.yml --profile pipeline up -d
+```
+
+The remaining app services are grouped under the `app` profile:
+
+- `postgres`
+- `redis`
+- `clickhouse`
+- `auth-service`
+- `query-service`
+- `prometheus`
+- `jaeger`
+
+Start only those app services with:
+
+```bash
+docker compose -f docker-compose.dev.yml --profile app up -d
+```
+
+Start the full dev stack with:
+
+```bash
+docker compose -f docker-compose.dev.yml --profile app --profile pipeline up -d
+```
 
 ## Migrations
 
