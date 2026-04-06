@@ -25,7 +25,7 @@ run = '''migrate -verbose -path ./migrations -database "$CLICKHOUSE_MIGRATIONS_U
 
 [tasks.pipeline-up]
 description = "Start the dev pipeline stack"
-run = '''docker compose -f docker-compose.dev.yml --profile pipeline up -d'''
+run = '''docker compose -f docker-compose.dev.yml --profile pipeline up -d --build'''
 
 [tasks.pipeline-down]
 description = "Stop the dev pipeline stack"
