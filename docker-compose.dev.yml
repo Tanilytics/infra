@@ -1,45 +1,42 @@
-name: tanilytics
+name: tanilytics-dev
 networks:
   tanilytics_network:
     driver: bridge
 volumes:
   redpanda-0: null
-  redpanda-1: null
-  redpanda-2: null
   postgres-data: null
   redis-data: null
   clickhouse-data: null
 services:
   ##################
-  # Redpanda Brokers #
+  # Redpanda Broker #
   ##################
   redpanda-0:
+    profiles: ["pipeline"]
     command:
       - redpanda
       - start
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_0_KAFKA_PORT}
-      # Address the broker advertises to clients that connect to the Kafka API.
-      # Use the internal addresses to connect to the Redpanda brokers
-      # from inside the same Docker network.
-      # Use the external addresses to connect to the Redpanda brokers
-      # from outside the Docker network.
-      - --advertise-kafka-addr internal://redpanda-0:9092,external://localhost:${REDPANDA_0_KAFKA_PORT}
-      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_0_PROXY_PORT}
-      # Address the broker advertises to clients that connect to the HTTP Proxy.
-      - --advertise-pandaproxy-addr internal://redpanda-0:8082,external://localhost:${REDPANDA_0_PROXY_PORT}
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_0_SCHEMA_PORT}
-      # Redpanda brokers use the RPC API to communicate with each other internally.
-      - --rpc-addr redpanda-0:33145
-      - --advertise-rpc-addr redpanda-0:33145
-      # Mode dev-container uses well-known configuration properties for development in containers.
-      - --mode ${REDPANDA_MODE}
-      # Tells Seastar (the framework Redpanda uses under the hood) to use 1 core on the system.
-      - --smp ${REDPANDA_SMP}
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_0_KAFKA_PORT}
+      - --advertise-kafka-addr
+      - internal://redpanda-0:9092,external://localhost:${REDPANDA_0_KAFKA_PORT}
+      - --pandaproxy-addr
+      - internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_0_PROXY_PORT}
+      - --advertise-pandaproxy-addr
+      - internal://redpanda-0:8082,external://localhost:${REDPANDA_0_PROXY_PORT}
+      - --schema-registry-addr
+      - internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_0_SCHEMA_PORT}
+      - --rpc-addr
+      - redpanda-0:33145
+      - --advertise-rpc-addr
+      - redpanda-0:33145
+      - --mode
+      - ${REDPANDA_MODE}
+      - --smp
+      - ${REDPANDA_SMP}
       - --default-log-level=${REDPANDA_LOG_LEVEL}
     image: ${REDPANDA_IMAGE}
     container_name: redpanda-0
-    # Sets the username and password of the bootstrap SCRAM superuser
-    # See https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/manual/production/production-deployment/#bootstrap-a-user-account
     environment:
       RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
     volumes:
@@ -67,102 +64,12 @@ services:
       interval: 10s
       timeout: 15s
       retries: 10
-  redpanda-1:
-    command:
-      - redpanda
-      - start
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_1_KAFKA_PORT}
-      - --advertise-kafka-addr internal://redpanda-1:9092,external://localhost:${REDPANDA_1_KAFKA_PORT}
-      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_1_PROXY_PORT}
-      - --advertise-pandaproxy-addr internal://redpanda-1:8082,external://localhost:${REDPANDA_1_PROXY_PORT}
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_1_SCHEMA_PORT}
-      - --rpc-addr redpanda-1:33145
-      - --advertise-rpc-addr redpanda-1:33145
-      - --mode ${REDPANDA_MODE}
-      - --smp ${REDPANDA_SMP}
-      - --default-log-level=${REDPANDA_LOG_LEVEL}
-      - --seeds redpanda-0:33145
-    image: ${REDPANDA_IMAGE}
-    container_name: redpanda-1
-    environment:
-      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
-    volumes:
-      - redpanda-1:/var/lib/redpanda/data
-      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
-    networks:
-      - tanilytics_network
-    ports:
-      - ${REDPANDA_1_SCHEMA_PORT}:${REDPANDA_1_SCHEMA_PORT}
-      - ${REDPANDA_1_PROXY_PORT}:${REDPANDA_1_PROXY_PORT}
-      - ${REDPANDA_1_KAFKA_PORT}:${REDPANDA_1_KAFKA_PORT}
-      - ${REDPANDA_1_ADMIN_PORT}:9644
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "rpk",
-          "cluster",
-          "info",
-          "-X",
-          "user=${REDPANDA_SUPERUSER}",
-          "-X",
-          "pass=${REDPANDA_PASSWORD}",
-        ]
-      interval: 10s
-      timeout: 15s
-      retries: 10
-    depends_on:
-      - redpanda-0
-  redpanda-2:
-    command:
-      - redpanda
-      - start
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_2_KAFKA_PORT}
-      - --advertise-kafka-addr internal://redpanda-2:9092,external://localhost:${REDPANDA_2_KAFKA_PORT}
-      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_2_PROXY_PORT}
-      - --advertise-pandaproxy-addr internal://redpanda-2:8082,external://localhost:${REDPANDA_2_PROXY_PORT}
-      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_2_SCHEMA_PORT}
-      - --rpc-addr redpanda-2:33145
-      - --advertise-rpc-addr redpanda-2:33145
-      - --mode ${REDPANDA_MODE}
-      - --smp ${REDPANDA_SMP}
-      - --default-log-level=${REDPANDA_LOG_LEVEL}
-      - --seeds redpanda-0:33145
-    image: ${REDPANDA_IMAGE}
-    container_name: redpanda-2
-    environment:
-      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
-    volumes:
-      - redpanda-2:/var/lib/redpanda/data
-      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
-    networks:
-      - tanilytics_network
-    ports:
-      - ${REDPANDA_2_SCHEMA_PORT}:${REDPANDA_2_SCHEMA_PORT}
-      - ${REDPANDA_2_PROXY_PORT}:${REDPANDA_2_PROXY_PORT}
-      - ${REDPANDA_2_KAFKA_PORT}:${REDPANDA_2_KAFKA_PORT}
-      - ${REDPANDA_2_ADMIN_PORT}:9644
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "rpk",
-          "cluster",
-          "info",
-          "-X",
-          "user=${REDPANDA_SUPERUSER}",
-          "-X",
-          "pass=${REDPANDA_PASSWORD}",
-        ]
-      interval: 10s
-      timeout: 15s
-      retries: 10
-    depends_on:
-      - redpanda-0
+
   ####################
   # Redpanda Console #
   ####################
   console:
+    profiles: ["pipeline"]
     container_name: redpanda-console
     image: ${CONSOLE_IMAGE}
     networks:
@@ -174,8 +81,6 @@ services:
     environment:
       CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/tmp/config.yml}
       CONSOLE_CONFIG_FILE: |
-        # Configure a connection to the Redpanda cluster
-        # See https://docs.redpanda.com/current/console/config/connect-to-redpanda/
         kafka:
           brokers: ["redpanda-0:9092"]
           sasl:
@@ -183,13 +88,13 @@ services:
             impersonateUser: true
         schemaRegistry:
           enabled: true
-          urls: ["http://redpanda-0:8081","http://redpanda-1:8081","http://redpanda-2:8081"]
+          urls: ["http://redpanda-0:8081"]
           authentication:
             impersonateUser: true
         redpanda:
           adminApi:
             enabled: true
-            urls: ["http://redpanda-0:9644","http://redpanda-1:9644","http://redpanda-2:9644"]
+            urls: ["http://redpanda-0:9644"]
             authentication:
               basic:
                 username: ${REDPANDA_SUPERUSER}
@@ -212,10 +117,12 @@ services:
         condition: service_healthy
       createtopic:
         condition: service_completed_successfully
+
   ############
   # Redis #
   ############
   redis:
+    profiles: ["pipeline", "app"]
     image: ${REDIS_IMAGE}
     container_name: redis
     volumes:
@@ -229,10 +136,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   ################
   # ClickHouse #
   ################
   clickhouse:
+    profiles: ["pipeline", "app"]
     image: ${CLICKHOUSE_IMAGE}
     container_name: clickhouse
     environment:
@@ -267,10 +176,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+
   ################
   # PostgreSQL #
   ################
   postgres:
+    profiles: ["app"]
     image: postgres:16-alpine
     container_name: postgres
     environment:
@@ -288,10 +199,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
   ###################
   # Auth Service #
   ###################
   auth-service:
+    profiles: ["app"]
     build:
       context: ../auth-service
       dockerfile: Dockerfile
@@ -317,10 +230,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
   ####################
   # Query Service #
   ####################
   query-service:
+    profiles: ["app"]
     build:
       context: ../query-service
       dockerfile: Dockerfile
@@ -347,11 +262,12 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+
   ####################
   # rpk container to create raw-events and dlq topics #
-  # See https://docs.redpanda.com/current/reference/rpk/rpk-topic/rpk-topic-create/
   ####################
   createtopic:
+    profiles: ["pipeline"]
     image: ${REDPANDA_IMAGE}
     networks:
       - tanilytics_network
@@ -381,7 +297,9 @@ services:
     depends_on:
       redpanda-0:
         condition: service_healthy
+
   prometheus:
+    profiles: ["app"]
     image: prom/prometheus:latest
     container_name: prometheus
     volumes:
@@ -394,6 +312,7 @@ services:
       - "9090:9090"
 
   jaeger:
+    profiles: ["app"]
     image: jaegertracing/jaeger:2.16.0
     container_name: jaeger
     networks:
@@ -407,6 +326,7 @@ services:
   # Ingestion #
   ###############
   ingestion:
+    profiles: ["pipeline"]
     build:
       context: ../ingestion
       dockerfile: Dockerfile
@@ -437,11 +357,14 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      createtopic:
+        condition: service_completed_successfully
 
   ################
   # Processing #
   ################
   processing:
+    profiles: ["pipeline"]
     build:
       context: ../processing
       dockerfile: Dockerfile
@@ -491,3 +414,5 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+      createtopic:
+        condition: service_completed_successfully
