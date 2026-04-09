@@ -1,0 +1,48 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-gateway
+  labels:
+    name: tanilytics-gateway
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-ingest
+  labels:
+    name: tanilytics-ingest
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-stream
+  labels:
+    name: tanilytics-stream
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-processing
+  labels:
+    name: tanilytics-processing
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-storage
+  labels:
+    name: tanilytics-storage
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-query
+  labels:
+    name: tanilytics-query
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tanilytics-observe
+  labels:
+    name: tanilytics-observe

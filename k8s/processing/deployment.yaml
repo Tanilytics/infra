@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: processing
+  namespace: tanilytics-processing
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: processing
+  template:
+    metadata:
+      labels:
+        app: processing
+    spec:
+      containers:
+        - name: processing
+          image: tanilytics/processing:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: processing-config
+            - secretRef:
+                name: processing-secret
