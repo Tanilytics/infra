@@ -1,6 +1,8 @@
 # Tanilytics Infrastructure
 
-This directory contains the Docker Compose configuration for the Tanilytics local infrastructure stack, including Redpanda, Redis, ClickHouse, ClickStack, Prometheus, Jaeger, ingestion, and processing.
+> **Note:** This is an alternate version of the project that uses **Apache Kafka 4.2.0** instead of Redpanda. The purpose of this branch is to compare performance and behavior between Kafka and Redpanda under the same workload. All application-facing environment variables retain the `REDPANDA_*` prefix to minimize code changes, but the underlying broker is Kafka running in KRaft mode.
+
+This directory contains the Docker Compose configuration for the Tanilytics local infrastructure stack, including Kafka, Redis, ClickHouse, Prometheus, Jaeger, ingestion, and processing.
 
 ## Quick Start
 
@@ -17,11 +19,11 @@ This directory contains the Docker Compose configuration for the Tanilytics loca
 
 ## Dev Pipeline Compose
 
-`docker-compose.dev.yml` mirrors the main compose stack, but replaces the three-node Redpanda cluster with a single `redpanda-0` broker.
+`docker-compose.dev.yml` mirrors the main compose stack, but replaces the three-node Kafka cluster with a single `kafka` broker (combined controller + broker in KRaft mode).
 
 The `pipeline` profile enables only the data pipeline services:
 
-- `redpanda-0`
+- `kafka`
 - `console`
 - `createtopic`
 - `redis`
@@ -86,12 +88,4 @@ mise run migrate-create -- add_some_change
 
 ### Changing the Superuser
 
-The default superuser is defined in `.env` as `REDPANDA_SUPERUSER=superuser`. If you change this value, you must also update the `superusers` list in `bootstrap.yml` to match:
-
-```yaml
-# bootstrap.yml
-superusers:
-  - <your-new-username>
-```
-
-This is required because Docker Compose does not substitute environment variables in mounted configuration files.
+The default superuser is defined in `.env` as `REDPANDA_SUPERUSER=superuser`. The SCRAM user is created automatically by the `createtopic` init container on startup.

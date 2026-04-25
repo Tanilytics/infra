@@ -3,70 +3,56 @@ networks:
   tanilytics_network:
     driver: bridge
 volumes:
-  redpanda-0: null
+  kafka-data: null
   postgres-data: null
   redis-data: null
   clickhouse-data: null
 services:
   ##################
-  # Redpanda Broker #
+  # Kafka Broker #
   ##################
-  redpanda-0:
+  kafka:
     profiles: ["pipeline"]
-    command:
-      - redpanda
-      - start
-      - --kafka-addr
-      - internal://0.0.0.0:9092,external://0.0.0.0:${REDPANDA_0_KAFKA_PORT}
-      - --advertise-kafka-addr
-      - internal://redpanda-0:9092,external://localhost:${REDPANDA_0_KAFKA_PORT}
-      - --pandaproxy-addr
-      - internal://0.0.0.0:8082,external://0.0.0.0:${REDPANDA_0_PROXY_PORT}
-      - --advertise-pandaproxy-addr
-      - internal://redpanda-0:8082,external://localhost:${REDPANDA_0_PROXY_PORT}
-      - --schema-registry-addr
-      - internal://0.0.0.0:8081,external://0.0.0.0:${REDPANDA_0_SCHEMA_PORT}
-      - --rpc-addr
-      - redpanda-0:33145
-      - --advertise-rpc-addr
-      - redpanda-0:33145
-      - --mode
-      - ${REDPANDA_MODE}
-      - --smp
-      - ${REDPANDA_SMP}
-      - --default-log-level=${REDPANDA_LOG_LEVEL}
-    image: ${REDPANDA_IMAGE}
-    container_name: redpanda-0
+    image: ${KAFKA_IMAGE}
+    container_name: kafka
+    ports:
+      - ${REDPANDA_0_KAFKA_PORT}:9092
     environment:
-      RP_BOOTSTRAP_USER: "${REDPANDA_SUPERUSER}:${REDPANDA_PASSWORD}"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: CONTROLLER://:9093,PLAINTEXT://:19092,SASL_PLAINTEXT_HOST://:9092,SASL_PLAINTEXT_INTERNAL://:9095
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:19092,SASL_PLAINTEXT_HOST://localhost:${REDPANDA_0_KAFKA_PORT},SASL_PLAINTEXT_INTERNAL://kafka:9095
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SASL_PLAINTEXT_HOST:SASL_PLAINTEXT,SASL_PLAINTEXT_INTERNAL:SASL_PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-256
+      KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_OPTS: "-Djava.security.auth.login.config=/etc/kafka/kafka-server-jaas.conf"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
     volumes:
-      - redpanda-0:/var/lib/redpanda/data
-      - ./bootstrap.yml:/etc/redpanda/.bootstrap.yaml
+      - kafka-data:/var/lib/kafka/data
+      - ./kafka-server-jaas.conf:/etc/kafka/kafka-server-jaas.conf:ro
     networks:
       - tanilytics_network
-    ports:
-      - ${REDPANDA_0_SCHEMA_PORT}:${REDPANDA_0_SCHEMA_PORT}
-      - ${REDPANDA_0_PROXY_PORT}:${REDPANDA_0_PROXY_PORT}
-      - ${REDPANDA_0_KAFKA_PORT}:${REDPANDA_0_KAFKA_PORT}
-      - ${REDPANDA_0_ADMIN_PORT}:9644
     healthcheck:
       test:
         [
           "CMD",
-          "rpk",
-          "cluster",
-          "info",
-          "-X",
-          "user=${REDPANDA_SUPERUSER}",
-          "-X",
-          "pass=${REDPANDA_PASSWORD}",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh",
+          "--bootstrap-server",
+          "localhost:19092",
         ]
       interval: 10s
       timeout: 15s
       retries: 10
 
   ####################
-  # Redpanda Console #
+  # Kafka Console #
   ####################
   console:
     profiles: ["pipeline"]
@@ -82,38 +68,18 @@ services:
       CONFIG_FILEPATH: ${CONFIG_FILEPATH:-/tmp/config.yml}
       CONSOLE_CONFIG_FILE: |
         kafka:
-          brokers: ["redpanda-0:9092"]
+          brokers: ["kafka:9095"]
           sasl:
             enabled: true
-            impersonateUser: true
+            username: ${REDPANDA_SUPERUSER}
+            password: ${REDPANDA_PASSWORD}
+            mechanism: ${REDPANDA_SASL_MECHANISM}
         schemaRegistry:
-          enabled: true
-          urls: ["http://redpanda-0:8081"]
-          authentication:
-            impersonateUser: true
-        redpanda:
-          adminApi:
-            enabled: true
-            urls: ["http://redpanda-0:9644"]
-            authentication:
-              basic:
-                username: ${REDPANDA_SUPERUSER}
-                password: ${REDPANDA_PASSWORD}
-              impersonateUser: false
-        authentication:
-          jwtSigningKey: ${CONSOLE_JWT_SIGNING_KEY}
-          basic:
-            enabled: true
-        authorization:
-          roleBindings:
-          - roleName: admin
-            users:
-              - loginType: basic
-                name: ${REDPANDA_SUPERUSER}
+          enabled: false
     ports:
       - ${CONSOLE_PORT}:8080
     depends_on:
-      redpanda-0:
+      kafka:
         condition: service_healthy
       createtopic:
         condition: service_completed_successfully
@@ -264,40 +230,22 @@ services:
         condition: service_healthy
 
   ####################
-  # rpk container to create raw-events and dlq topics #
+  # Init container to create SASL user and topics #
   ####################
   createtopic:
     profiles: ["pipeline"]
-    image: ${REDPANDA_IMAGE}
+    image: ${KAFKA_IMAGE}
     networks:
       - tanilytics_network
-    entrypoint: /bin/sh
+    entrypoint: /bin/bash
     command:
       - -c
       - |
-        rpk topic create ${RAW_EVENTS_TOPIC} \
-          --if-not-exists \
-          --partitions ${RAW_EVENTS_PARTITIONS} \
-          --replicas ${RAW_EVENTS_REPLICAS} \
-          -c cleanup.policy=${RAW_EVENTS_CLEANUP_POLICY} \
-          -c retention.ms=${RAW_EVENTS_RETENTION_MS} \
-          -c retention.bytes=${RAW_EVENTS_RETENTION_BYTES} \
-          -c compression.type=${RAW_EVENTS_COMPRESSION} \
-          -X user=${REDPANDA_SUPERUSER} \
-          -X pass=${REDPANDA_PASSWORD} \
-          -X brokers=redpanda-0:9092 && \
-        rpk topic create ${DLQ_TOPIC} \
-          --if-not-exists \
-          --partitions ${DLQ_PARTITIONS} \
-          --replicas ${DLQ_REPLICAS} \
-          -c cleanup.policy=${DLQ_CLEANUP_POLICY} \
-          -c retention.ms=${DLQ_RETENTION_MS} \
-          -c compression.type=${DLQ_COMPRESSION} \
-          -X user=${REDPANDA_SUPERUSER} \
-          -X pass=${REDPANDA_PASSWORD} \
-          -X brokers=redpanda-0:9092
+        /opt/kafka/bin/kafka-configs.sh --bootstrap-server kafka:19092 --alter --add-config "SCRAM-SHA-256=[password=${REDPANDA_PASSWORD}]" --entity-type users --entity-name ${REDPANDA_SUPERUSER} && \
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --create --if-not-exists --topic ${RAW_EVENTS_TOPIC} --partitions ${RAW_EVENTS_PARTITIONS} --replication-factor ${RAW_EVENTS_REPLICAS} --config cleanup.policy=${RAW_EVENTS_CLEANUP_POLICY} --config retention.ms=${RAW_EVENTS_RETENTION_MS} --config retention.bytes=${RAW_EVENTS_RETENTION_BYTES} --config compression.type=${RAW_EVENTS_COMPRESSION} && \
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:19092 --create --if-not-exists --topic ${DLQ_TOPIC} --partitions ${DLQ_PARTITIONS} --replication-factor ${DLQ_REPLICAS} --config cleanup.policy=${DLQ_CLEANUP_POLICY} --config retention.ms=${DLQ_RETENTION_MS} --config compression.type=${DLQ_COMPRESSION}
     depends_on:
-      redpanda-0:
+      kafka:
         condition: service_healthy
 
   prometheus:
@@ -355,7 +303,7 @@ services:
       - BLOOM_FILTER_ERROR_RATE=${BLOOM_FILTER_ERROR_RATE}
       - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
     depends_on:
-      redpanda-0:
+      kafka:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -410,7 +358,7 @@ services:
       - CONSUMER_MAX_CONCURRENT_FETCHES=${CONSUMER_MAX_CONCURRENT_FETCHES}
       - GEOIP_DB_PATH=${GEOIP_DB_PATH}
     depends_on:
-      redpanda-0:
+      kafka:
         condition: service_healthy
       redis:
         condition: service_healthy
