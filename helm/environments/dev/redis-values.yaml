@@ -1,0 +1,7 @@
+architecture: standalone
+replica:
+  replicaCount: 1
+commonConfiguration: |
+  loadmodule /opt/bitnami/redis/lib/redis/modules/redisbloom.so
+auth:
+  enabled: false

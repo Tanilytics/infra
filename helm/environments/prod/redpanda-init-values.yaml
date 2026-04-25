@@ -1,0 +1,66 @@
+job:
+  name: redpanda-init
+  backoffLimit: 3
+  restartPolicy: Never
+  image: redpanda/redpanda:latest
+  env:
+    - name: REDPANDA_USER
+      valueFrom:
+        secretKeyRef:
+          name: redpanda
+          key: username
+    - name: REDPANDA_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: redpanda
+          key: password
+    - name: REDPANDA_BROKERS
+      value: "redpanda.tanilytics-stream.svc.cluster.local:9092"
+    - name: REDPANDA_SCHEMA_REGISTRY_URL
+      value: "http://redpanda.tanilytics-stream.svc.cluster.local:8081"
+  command: |
+    set -e
+    echo "Starting Redpanda initialization..."
+    
+    # Create raw-events topic (skip if exists)
+    echo "Creating raw-events topic..."
+    rpk topic create raw-events \
+      --brokers "$REDPANDA_BROKERS" \
+      -u "$REDPANDA_USER" \
+      -p "$REDPANDA_PASSWORD" \
+      --partitions 12 \
+      --replicas 1 \
+      --config cleanup.policy=delete \
+      --config retention.ms=259200000 \
+      --config retention.bytes=-1 \
+      --config compression.type=lz4 \
+      || echo "raw-events topic already exists or error occurred"
+    
+    # Create dlq topic (skip if exists)
+    echo "Creating dlq topic..."
+    rpk topic create dlq \
+      --brokers "$REDPANDA_BROKERS" \
+      -u "$REDPANDA_USER" \
+      -p "$REDPANDA_PASSWORD" \
+      --partitions 1 \
+      --replicas 1 \
+      --config cleanup.policy=delete \
+      --config retention.ms=604800000 \
+      --config compression.type=none \
+      || echo "dlq topic already exists or error occurred"
+    
+    # Register raw-events schema with Schema Registry
+    echo "Registering raw-events schema..."
+    curl -X POST "$REDPANDA_SCHEMA_REGISTRY_URL/subjects/raw-events-value/versions" \
+      -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+      -d '{"schema":"{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"title\":\"RawEvent\",\"description\":\"A single analytics event on the raw-events Kafka topic.\",\"type\":\"object\",\"properties\":{\"event_id\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"UUID v7 uniquely identifying this event.\"},\"site_id\":{\"type\":\"string\",\"description\":\"Identifier of the site that produced the event; used as the Kafka message key.\"},\"visitor_id\":{\"type\":\"string\",\"description\":\"Anonymous or authenticated visitor identifier.\"},\"event_type\":{\"type\":\"string\",\"description\":\"Type of event (e.g. page_view, click, custom).\"},\"timestamp\":{\"type\":\"integer\",\"description\":\"Client-side event timestamp in milliseconds since Unix epoch.\"},\"url\":{\"type\":\"string\",\"format\":\"uri\",\"description\":\"Full URL of the page where the event occurred.\"},\"referrer\":{\"type\":\"string\",\"description\":\"HTTP Referer header value; empty string if none.\"},\"utm_source\":{\"type\":\"string\",\"description\":\"UTM source parameter.\"},\"utm_medium\":{\"type\":\"string\",\"description\":\"UTM medium parameter.\"},\"utm_campaign\":{\"type\":\"string\",\"description\":\"UTM campaign parameter.\"},\"session_context\":{\"type\":\"object\",\"description\":\"Browser/device context collected at the time of the event.\",\"properties\":{\"screen_width\":{\"type\":\"integer\",\"description\":\"Screen width in pixels.\"},\"screen_height\":{\"type\":\"integer\",\"description\":\"Screen height in pixels.\"},\"language\":{\"type\":\"string\",\"description\":\"Browser language (BCP 47 tag).\"},\"timezone\":{\"type\":\"string\",\"description\":\"IANA timezone name.\"}},\"required\":[\"screen_width\",\"screen_height\",\"language\",\"timezone\"],\"additionalProperties\":false},\"properties\":{\"type\":\"object\",\"description\":\"Arbitrary custom properties attached to the event.\",\"additionalProperties\":true},\"server_timestamp\":{\"type\":\"integer\",\"description\":\"Server-side ingestion timestamp in milliseconds since Unix epoch.\"},\"ip\":{\"type\":\"string\",\"description\":\"Client IP address as seen by the ingest server.\"},\"user_agent\":{\"type\":\"string\",\"description\":\"Raw User-Agent string from the HTTP request.\"}},\"required\":[\"event_id\",\"site_id\",\"visitor_id\",\"event_type\",\"timestamp\",\"url\",\"referrer\",\"utm_source\",\"utm_medium\",\"utm_campaign\",\"session_context\",\"properties\",\"server_timestamp\",\"ip\",\"user_agent\"],\"additionalProperties\":false}","schemaType":"JSON"}' \
+      || echo "Schema already registered or error occurred"
+    
+    echo "Redpanda initialization complete"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
