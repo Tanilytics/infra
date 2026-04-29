@@ -343,10 +343,10 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
-      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123/${CLICKHOUSE_DATABASE}
-      CLICKHOUSE_USERNAME: ${CLICKHOUSE_USERNAME}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      HDFS_NAMENODE: hdfs://namenode:9000
+      HDFS_USER: ${HDFS_USER}
+      HDFS_BASE_PATH: ${HDFS_BASE_PATH}
+      AUTH_SERVICE_URL: http://auth-service:8082
       JWT_SECRET: ${JWT_SECRET}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${JAVA_OTEL_EXPORTER_OTLP_ENDPOINT}
     networks:
@@ -495,6 +495,4 @@ services:
       redpanda-0:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      clickhouse:
         condition: service_healthy
