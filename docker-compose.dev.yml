@@ -6,7 +6,8 @@ volumes:
   redpanda-0: null
   postgres-data: null
   redis-data: null
-  clickhouse-data: null
+  hadoop-namenode-data: null
+  hadoop-datanode-data: null
 services:
   ##################
   # Redpanda Broker #
@@ -138,44 +139,52 @@ services:
       retries: 5
 
   ################
-  # ClickHouse #
+  # HDFS NameNode #
   ################
-  clickhouse:
+  namenode:
     profiles: ["pipeline", "app"]
-    image: ${CLICKHOUSE_IMAGE}
-    container_name: clickhouse
+    image: bde2020/hadoop-namenode:latest
+    container_name: namenode
     environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: ${CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT}
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
+      CLUSTER_NAME: tanilytics
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+      HDFS_CONF_dfs_replication: 1
     volumes:
-      - clickhouse-data:/var/lib/clickhouse
+      - hadoop-namenode-data:/hadoop/dfs/name
     networks:
       - tanilytics_network
     ports:
-      - ${CLICKHOUSE_HTTP_PORT}:8123
-      - ${CLICKHOUSE_TCP_PORT}:9000
+      - ${HDFS_NAMENODE_WEB_PORT}:9870
+      - 9000:9000
     healthcheck:
-      test:
-        [
-          "CMD",
-          "clickhouse-client",
-          "--host",
-          "127.0.0.1",
-          "--user=${CLICKHOUSE_USERNAME}",
-          "--password=${CLICKHOUSE_PASSWORD}",
-          "--database=${CLICKHOUSE_DATABASE}",
-          "--query",
-          "SELECT 1",
-        ]
-      interval: 10s
+      test: ["CMD", "curl", "-f", "http://localhost:9870/"]
+      interval: 15s
       timeout: 5s
-      retries: 12
+      retries: 5
+
+  ################
+  # HDFS DataNode #
+  ################
+  datanode:
+    profiles: ["pipeline", "app"]
+    image: bde2020/hadoop-datanode:latest
+    container_name: datanode
+    environment:
+      CORE_CONF_fs_defaultFS: hdfs://namenode:9000
+    volumes:
+      - hadoop-datanode-data:/hadoop/dfs/data
+    networks:
+      - tanilytics_network
+    ports:
+      - ${HDFS_DATANODE_WEB_PORT}:9864
+    depends_on:
+      namenode:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9864/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
 
   ################
   # PostgreSQL #
@@ -259,8 +268,6 @@ services:
       - ${QUERY_SERVICE_PORT}:8081
     depends_on:
       redis:
-        condition: service_healthy
-      clickhouse:
         condition: service_healthy
 
   ####################
@@ -385,16 +392,11 @@ services:
       - DLQ_PRODUCER_MAX_BUFFERED_RECORDS=${DLQ_PRODUCER_MAX_BUFFERED_RECORDS}
       - DLQ_PRODUCER_RECORD_RETRIES=${DLQ_PRODUCER_RECORD_RETRIES}
       - DLQ_PRODUCER_RETRY_TIMEOUT=${DLQ_PRODUCER_RETRY_TIMEOUT}
-      - CLICKHOUSE_ADDRS=${CLICKHOUSE_ADDRS}
-      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE}
-      - CLICKHOUSE_USERNAME=${CLICKHOUSE_USERNAME}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
-      - CLICKHOUSE_DIAL_TIMEOUT=${CLICKHOUSE_DIAL_TIMEOUT}
-      - CLICKHOUSE_MAX_OPEN_CONNS=${CLICKHOUSE_MAX_OPEN_CONNS}
-      - CLICKHOUSE_MAX_IDLE_CONNS=${CLICKHOUSE_MAX_IDLE_CONNS}
-      - CLICKHOUSE_CONN_OPEN_STRATEGY=${CLICKHOUSE_CONN_OPEN_STRATEGY}
-      - CH_BATCH_SIZE=${CH_BATCH_SIZE}
-      - CH_BATCH_TIMEOUT=${CH_BATCH_TIMEOUT}
+      - HDFS_NAMENODE_ADDR=${HDFS_NAMENODE_ADDR}
+      - HDFS_USER=${HDFS_USER}
+      - HDFS_BASE_PATH=${HDFS_BASE_PATH}
+      - CONSUMER_BATCH_SIZE=${CONSUMER_BATCH_SIZE}
+      - CONSUMER_BATCH_TIMEOUT=${CONSUMER_BATCH_TIMEOUT}
       - REDIS_URL=${REDIS_URL}
       - ANONYMIZATION_SALT=${ANONYMIZATION_SALT}
       - LOG_LEVEL=${LOG_LEVEL}
@@ -414,7 +416,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      clickhouse:
+      namenode:
         condition: service_healthy
       createtopic:
         condition: service_completed_successfully
