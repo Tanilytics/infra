@@ -19,18 +19,27 @@ spec:
         - name: init
           image: {{ .Values.job.image }}
           imagePullPolicy: IfNotPresent
+          {{- if .Values.job.command }}
           command:
-            - /bin/sh
-            - -c
-            - |
-{{ .Values.job.command | indent 14 }}
+{{ toYaml .Values.job.command | indent 12 }}
+          {{- end }}
 
           {{- if .Values.job.env }}
           env:
 {{ toYaml .Values.job.env | indent 12 }}
           {{- end }}
 
+          {{- if .Values.job.volumeMounts }}
+          volumeMounts:
+{{ toYaml .Values.job.volumeMounts | indent 12 }}
+          {{- end }}
+
           {{- if .Values.job.resources }}
           resources:
 {{ toYaml .Values.job.resources | indent 12 }}
           {{- end }}
+
+      {{- if .Values.job.volumes }}
+      volumes:
+{{ toYaml .Values.job.volumes | indent 8 }}
+      {{- end }}
