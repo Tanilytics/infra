@@ -1,0 +1,36 @@
+namespace: tanilytics-ingest
+appName: ingestion
+replicas: 1
+image:
+  repository: tanilytics/ingestion
+  tag: latest
+
+healthChecks:
+  enabled: true
+  liveness:
+    path: /livez
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readiness:
+    path: /livez
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+configMap:
+  data:
+    REDPANDA_BROKERS: "redpanda.tanilytics-stream.svc.cluster.local:9093"
+    REDPANDA_SASL_MECHANISM: "SCRAM-SHA-256"
+    PRODUCER_BATCH_MAX_BYTES: "1048576"
+    PRODUCER_TOPIC: "raw-events"
+    PRODUCER_LINGER: "10ms"
+    PRODUCER_MAX_BUFFERED_RECORDS: "50000"
+    PRODUCER_RECORD_RETRIES: "3"
+    PRODUCER_RETRY_TIMEOUT: "30s"
+    LOG_LEVEL: "debug"
+    BLOOM_FILTER_CAPACITY: "1000000"
+    BLOOM_FILTER_ERROR_RATE: "0.001"
+    REDIS_URL: redis://redis-master.tanilytics-ingest.svc.cluster.local:6379

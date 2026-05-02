@@ -1,0 +1,33 @@
+hyperdx:
+  enabled: false
+
+mongodb:
+  enabled: false
+
+otel:
+  enabled: false
+
+clickhouse:
+  enabled: true
+  access:
+    enabled: false
+  
+  cluster:
+    name: "clickhouse"
+    shards: 1
+    replicas: 1     
+  
+  keeper:
+    enabled: true
+    replicas: 1         
+
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"

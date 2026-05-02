@@ -1,0 +1,16 @@
+# Disable webhooks if you don't have cert-manager installed.
+# Set to true if cert-manager is present in your cluster.
+webhooks:
+  enabled: false
+
+# CRDs are auto-installed via pre-install hooks — leave enabled.
+crdHook:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi

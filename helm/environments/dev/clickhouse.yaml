@@ -1,0 +1,38 @@
+# Single-node ClickHouse — no Keeper needed for standalone.
+# Bump shards/replicas for a cluster.
+operator:
+  enabled: false
+clickhouse:
+  # ClickHouse version to deploy
+  #image:
+    #tag: "25.3.6.10034"   # LTS release; change to "latest" or a specific version
+
+  # Cluster layout — 1 shard, 1 replica = standalone node
+  clusterLayout:
+    shardsCount: 1
+    replicasCount: 1
+  
+
+  # Persistent storage
+  persistence:
+    enabled: true
+    storageClass: ""    # leave empty to use cluster default StorageClass
+    size: "10Gi"
+
+  # Resource requests/limits
+  resources:
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+    limits:
+      cpu: "4"
+      memory: "4Gi"
+
+  # Expose via ClusterIP (internal only).
+  # Change to LoadBalancer or configure an Ingress for external access.
+  service:
+    type: ClusterIP
+
+  # Optional: keep ClickHouse config tuning minimal for now.
+  # Add clickhouse-server XML overrides here if needed.
+  configuration: {}

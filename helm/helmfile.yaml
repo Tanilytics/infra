@@ -1,0 +1,129 @@
+environments:
+  dev: {}
+  prod: {}
+
+---
+repositories:
+  - name: redpanda
+    url: https://charts.redpanda.com
+  - name: clickhouse
+    url: https://clickhouse.github.io/ClickStack-helm-charts
+  - name: altinity
+    url: https://helm.altinity.com
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami
+
+
+---
+releases:
+  - name: ingestion
+    namespace: tanilytics-ingest
+    createNamespace: true
+    chart: ./charts/ingestion
+    values:
+      - ./charts/ingestion/values.yaml
+      - ./environments/{{ .Environment.Name }}/ingestion-values.yaml
+    needs:
+      - tanilytics-stream/redpanda
+      - tanilytics-ingest/redis
+  - name: processing
+    namespace: tanilytics-processing
+    createNamespace: true
+    chart: ./charts/processing
+    values:
+      - ./charts/processing/values.yaml
+      - ./environments/{{ .Environment.Name }}/processing-values.yaml
+    needs:
+      - tanilytics-stream/redpanda
+      - tanilytics-storage/clickhouse
+      - tanilytics-ingest/redis
+  - name: redpanda
+    namespace: tanilytics-stream
+    createNamespace: true
+    chart: redpanda/redpanda
+    values:
+      - ./environments/{{ .Environment.Name }}/redpanda-values.yaml
+      - ./environments/{{ .Environment.Name }}/redpanda-secrets.yaml
+  - name: redpanda-init
+    namespace: tanilytics-stream
+    chart: ./charts/init-job
+    values:
+      - ./environments/{{ .Environment.Name }}/redpanda-init-values.yaml
+    needs:
+      - tanilytics-stream/redpanda
+  - name: redis
+    namespace: tanilytics-ingest
+    createNamespace: true
+    chart: bitnami/redis
+    values:
+      - ./environments/{{ .Environment.Name }}/redis-values.yaml
+      - ./environments/{{ .Environment.Name }}/redis-secrets.yaml
+  #- name: clickstack-operators
+   # chart: clickhouse/clickstack-operators
+   # namespace: tanilytics-storage
+   # createNamespace: true
+    #version: "*"          # latest
+  #- name: clickhouse
+   # chart: clickhouse/clickstack
+    #namespace: tanilytics-storage
+    #createNamespace: true
+    #version: "*"
+    #values:
+     # - ./environments/{{ .Environment.Name }}/clickhouse-values.yaml
+    #needs:
+     # - clickstack-operators
+  # Phase 1 — Operator + CRDs
+  - name: clickhouse-operator
+    namespace: tanilytics-storage
+    createNamespace: true
+    chart: altinity/altinity-clickhouse-operator
+    version: "0.26.3"   # pin to latest stable; check: helm search repo altinity
+    values:
+      - ./environments/{{ .Environment.Name }}/clickhouse-operator.yaml
+
+  # Phase 2 — ClickHouse instance (raw manifest via helmfile hook)
+  - name: clickhouse
+    namespace: tanilytics-storage
+    createNamespace: true
+    chart: altinity/clickhouse
+    version: "0.3.11"   # LTS release; change to "latest" or a specific version
+    needs:
+      - tanilytics-storage/clickhouse-operator
+    values:
+      - ./environments/{{ .Environment.Name }}/clickhouse.yaml
+      - ./environments/{{ .Environment.Name }}/clickhouse-secrets.yaml
+  - name: clickhouse-migrations
+    namespace: tanilytics-storage
+    chart: ./charts/init-job
+    values:
+      - ./environments/{{ .Environment.Name }}/clickhouse-migrations-values.yaml
+    needs:
+      - tanilytics-storage/clickhouse
+  - name: query-service
+    namespace: tanilytics-query
+    createNamespace: true
+    chart: ./charts/query-service
+    values:
+      - ./charts/query-service/values.yaml
+      - ./environments/{{ .Environment.Name }}/query-values.yaml
+      - ./environments/{{ .Environment.Name }}/query-secrets.yaml
+    needs:
+      - tanilytics-storage/clickhouse
+      - tanilytics-ingest/redis
+  - name: postgres
+    namespace: tanilytics-storage
+    createNamespace: true
+    chart: bitnami/postgresql
+    values:
+      - ./environments/{{ .Environment.Name }}/postgres-values.yaml
+      - ./environments/{{ .Environment.Name }}/postgres-secrets.yaml
+  - name: auth-service
+    namespace: tanilytics-query
+    createNamespace: true
+    chart: ./charts/auth-service
+    values:
+      - ./charts/auth-service/values.yaml
+      - ./environments/{{ .Environment.Name }}/auth-service-values.yaml
+    needs:
+      - tanilytics-storage/postgres
+      - tanilytics-ingest/redis

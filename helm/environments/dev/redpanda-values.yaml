@@ -1,0 +1,32 @@
+tls:
+  enabled: false
+
+listeners:
+  kafka:
+    tls:
+      enabled: false
+  admin:
+    tls:
+      enabled: false
+  schemaRegistry:
+    tls:
+      enabled: false
+
+external:
+  domain: customredpandadomain.local
+
+statefulset:
+  replicas: 1
+  initContainers:
+    setDataDirOwnership:
+      enabled: true
+storage:
+  persistentVolume:
+    enabled: false
+
+resources:
+  cpu:
+    cores: 1
+  memory:
+    container:
+      max: 2Gi

@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.job.name }}
+  labels:
+    app.kubernetes.io/name: {{ .Values.job.name }}
+  annotations:
+    # ensures job is recreated on every helm upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: {{ .Values.job.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Values.job.name }}
+    spec:
+      restartPolicy: {{ .Values.job.restartPolicy }}
+      containers:
+        - name: init
+          image: {{ .Values.job.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - /bin/sh
+            - -c
+            - |
+{{ .Values.job.command | indent 14 }}
+
+          {{- if .Values.job.env }}
+          env:
+{{ toYaml .Values.job.env | indent 12 }}
+          {{- end }}
+
+          {{- if .Values.job.resources }}
+          resources:
+{{ toYaml .Values.job.resources | indent 12 }}
+          {{- end }}

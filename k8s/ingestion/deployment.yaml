@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion
+  namespace: tanilytics-ingest
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestion
+  template:
+    metadata:
+      labels:
+        app: ingestion
+    spec:
+      containers:
+        - name: ingestion
+          image: tanilytics/ingestion:latest
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: ingestion-config
+            - secretRef:
+                name: ingestion-secret

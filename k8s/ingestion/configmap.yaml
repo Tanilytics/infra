@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingestion-config
+  namespace: tanilytics-ingest
+data:
+  INGESTION_PORT: ":3000"
+  REDPANDA_BROKERS: "redpanda.tanilytics-stream.svc.cluster.local:9093"
+  REDPANDA_SASL_MECHANISM: "SCRAM-SHA-256"
+  PRODUCER_TOPIC: "raw-events"
+  PRODUCER_BATCH_MAX_BYTES: "1048576"
+  PRODUCER_LINGER: "10ms"
+  PRODUCER_MAX_BUFFERED_RECORDS: "50000"
+  PRODUCER_RECORD_RETRIES: "3"
+  PRODUCER_RETRY_TIMEOUT: "30s"
+  LOG_LEVEL: "debug"
+  BLOOM_FILTER_CAPACITY: "1000000"
+  BLOOM_FILTER_ERROR_RATE: "0.001"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  REDIS_URL: redis://redis.tanilytics-ingest.svc.cluster.local:6379

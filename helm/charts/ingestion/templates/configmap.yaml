@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Values.appName }}-config"
+  namespace: {{ .Values.namespace }}
+data:
+  INGESTION_PORT: ":3000"
+  REDPANDA_BROKERS: "{{ .Values.configMap.data.REDPANDA_BROKERS }}"
+  REDPANDA_SASL_MECHANISM: "{{ .Values.configMap.data.REDPANDA_SASL_MECHANISM }}"
+  PRODUCER_TOPIC: "{{ .Values.configMap.data.PRODUCER_TOPIC }}"
+  PRODUCER_BATCH_MAX_BYTES: "{{ .Values.configMap.data.PRODUCER_BATCH_MAX_BYTES }}"
+  PRODUCER_LINGER: "{{ .Values.configMap.data.PRODUCER_LINGER }}"
+  PRODUCER_MAX_BUFFERED_RECORDS: "{{ .Values.configMap.data.PRODUCER_MAX_BUFFERED_RECORDS }}"
+  PRODUCER_RECORD_RETRIES: "{{ .Values.configMap.data.PRODUCER_RECORD_RETRIES }}"
+  PRODUCER_RETRY_TIMEOUT: "{{ .Values.configMap.data.PRODUCER_RETRY_TIMEOUT }}"
+  LOG_LEVEL: "{{ .Values.configMap.data.LOG_LEVEL }}"
+  BLOOM_FILTER_CAPACITY: "{{ .Values.configMap.data.BLOOM_FILTER_CAPACITY }}"
+  BLOOM_FILTER_ERROR_RATE: "{{ .Values.configMap.data.BLOOM_FILTER_ERROR_RATE }}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+  REDIS_URL: "{{ .Values.configMap.data.REDIS_URL }}"

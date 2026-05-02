@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "auth-service.fullname" . }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  AUTH_SERVICE_PORT: "{{ .Values.service.containerPort }}"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.name }}"
+  REDIS_HOST: "{{ .Values.redis.host }}"
+  REDIS_PORT: "{{ .Values.redis.port }}"
+  JWT_ACCESS_EXPIRY: "{{ .Values.jwt.accessExpiry }}"
+  JWT_REFRESH_EXPIRY: "{{ .Values.jwt.refreshExpiry }}"
+  JWT_INTERNAL_AUDIENCE: "{{ .Values.jwt.audience }}"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "{{ .Values.otel.endpoint }}"

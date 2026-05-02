@@ -1,0 +1,88 @@
+# Default values for auth-service.
+# This file contains values that are referenced by templates in this chart.
+
+# Namespace to deploy into (templated)
+namespace: tanilytics-query
+
+replicaCount: 1
+
+image:
+  repository: tanilytics/auth-service
+  pullPolicy: IfNotPresent
+  # Keep latest as requested; can be overridden per environment
+  tag: ""
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8082
+  containerPort: 8082
+
+# Application specific settings
+database:
+  host: postgres
+  port: 5432
+  name: analytics
+  username: postgres
+  # For security, you should override this via environment values or external secret management
+  password: postgres
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+
+jwt:
+  secret: change-me-in-production-use-at-least-256-bits
+  accessExpiry: 3600
+  refreshExpiry: 604800
+  audience: auth-internal
+
+otel:
+  endpoint: http://otel-collector:4317
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
