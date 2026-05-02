@@ -99,3 +99,20 @@ releases:
       - ./environments/{{ .Environment.Name }}/clickhouse-migrations-values.yaml
     needs:
       - tanilytics-storage/clickhouse
+  - name: postgres
+    namespace: tanilytics-storage
+    createNamespace: true
+    chart: bitnami/postgresql
+    values:
+      - ./environments/{{ .Environment.Name }}/postgres-values.yaml
+      - ./environments/{{ .Environment.Name }}/postgres-secrets.yaml
+  - name: auth-service
+    namespace: tanilytics-query
+    createNamespace: true
+    chart: ./charts/auth-service
+    values:
+      - ./charts/auth-service/values.yaml
+      - ./environments/{{ .Environment.Name }}/auth-service-values.yaml
+    needs:
+      - tanilytics-storage/postgres
+      - tanilytics-ingest/redis

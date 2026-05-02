@@ -1,0 +1,45 @@
+namespace: tanilytics-query
+replicaCount: 1
+image:
+  tag: latest
+
+service:
+  containerPort: 8082
+  port: 8082
+  type: ClusterIP
+
+database:
+  host: postgres
+  port: 5432
+  name: analytics
+  username: postgres
+  # For dev we provide a simple password here, but prefer external secrets in real setups
+  password: postgres
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+
+jwt:
+  secret: dev-secret-change-in-production
+  accessExpiry: 3600
+  refreshExpiry: 604800
+  audience: auth-internal
+
+otel:
+  endpoint: http://otel-collector:4317
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPUUtilizationPercentage: 80
