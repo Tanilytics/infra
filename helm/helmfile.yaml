@@ -99,6 +99,17 @@ releases:
       - ./environments/{{ .Environment.Name }}/clickhouse-migrations-values.yaml
     needs:
       - tanilytics-storage/clickhouse
+  - name: query-service
+    namespace: tanilytics-query
+    createNamespace: true
+    chart: ./charts/query-service
+    values:
+      - ./charts/query-service/values.yaml
+      - ./environments/{{ .Environment.Name }}/query-values.yaml
+      - ./environments/{{ .Environment.Name }}/query-secrets.yaml
+    needs:
+      - tanilytics-storage/clickhouse
+      - tanilytics-ingest/redis
   - name: postgres
     namespace: tanilytics-storage
     createNamespace: true

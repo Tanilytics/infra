@@ -1,0 +1,26 @@
+namespace: tanilytics-query
+replicaCount: 1
+
+image:
+  tag: latest
+
+service:
+  containerPort: 8081
+  port: 8081
+  type: ClusterIP
+
+spring:
+  profilesActive: docker
+
+redis:
+  host: redis
+  port: 6379
+  password: ""
+
+clickhouse:
+  host: clickhouse.tanilytics-storage.svc.cluster.local
+  port: 8123
+  database: default
+
+otel:
+  endpoint: http://otel-collector:4317
