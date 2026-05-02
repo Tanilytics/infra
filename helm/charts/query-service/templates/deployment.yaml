@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
-metadata:
-  name: {{ include "query-service.fullname" . }}
-  namespace: {{ .Values.namespace }}
-spec:
+  metadata:
+    name: {{ include "query-service.fullname" . }}
+    namespace: {{ .Values.namespace }}
+  spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "query-service.name" . }}
+{{ include "query-service.labels" . | indent 6 }}
   template:
     metadata:
       labels:
-        app: {{ include "query-service.name" . }}
+{{ include "query-service.labels" . | indent 8 }}
     spec:
       containers:
         - name: {{ include "query-service.name" . }}
