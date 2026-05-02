@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
-  metadata:
-    name: {{ .Values.appName }}
-    namespace: {{ .Values.namespace }}
-  spec:
+metadata:
+  name: {{ .Values.appName }}
+  namespace: {{ .Values.namespace }}
+spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
