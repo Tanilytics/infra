@@ -36,20 +36,14 @@ service:
 
 # Application specific settings
 database:
-  host: postgres
+  host: postgres.tanilytics-storage.svc.cluster.local
   port: 5432
-  name: analytics
-  username: postgres
-  # For security, you should override this via environment values or external secret management
-  password: postgres
-
+  name: postgres
 redis:
-  host: redis
+  host: redis-master.tanilytics-ingest.svc.cluster.local
   port: 6379
-  password: ""
 
 jwt:
-  secret: change-me-in-production-use-at-least-256-bits
   accessExpiry: 3600
   refreshExpiry: 604800
   audience: auth-internal

@@ -124,6 +124,7 @@ releases:
     values:
       - ./charts/auth-service/values.yaml
       - ./environments/{{ .Environment.Name }}/auth-service-values.yaml
+      - ./environments/{{ .Environment.Name }}/auth-service-secrets.yaml
     needs:
       - tanilytics-storage/postgres
       - tanilytics-ingest/redis

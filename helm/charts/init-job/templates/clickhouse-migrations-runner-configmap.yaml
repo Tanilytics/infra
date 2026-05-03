@@ -67,11 +67,7 @@ data:
       log_info "Executing migration: $migration_name"
 
       # Execute migration
-      if clickhouse-client \\
-        -h "$CLICKHOUSE_HOST" \\
-        --user "$CLICKHOUSE_USER" \\
-        --password "$CLICKHOUSE_PASSWORD" \\
-        --multiquery < "$migration_file"; then
+      if clickhouse-client -h "$CLICKHOUSE_HOST" --user "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" --multiquery < "$migration_file"; then
         log_info "✓ Migration completed: $migration_name"
         executed_migrations+=("$migration_name")
       else

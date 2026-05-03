@@ -1,9 +1,10 @@
 namespace: tanilytics-query
 replicaCount: 1
-
+spring:
+  profilesActive: docker
 image:
   repository: tanilytics/query-service
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   tag: latest
 
 imagePullSecrets: []
@@ -31,17 +32,15 @@ spring:
   profilesActive: docker
 
 redis:
-  host: redis
+  host: redis-master.tanilytics-ingest.svc.cluster.local
   port: 6379
-  password: ""
 
 clickhouse:
   host: clickhouse.tanilytics-storage.svc.cluster.local
   port: 8123
   database: default
-  username: yassine
-  user: yassine
-  password: 12345678
+authService:
+  baseUrl: http://auth-service.tanilytics-query.svc.cluster.local:8082
 
 jwt:
   secret: change-me-in-production-use-at-least-256-bits

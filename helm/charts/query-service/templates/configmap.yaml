@@ -4,12 +4,11 @@ metadata:
   name: {{ include "query-service.fullname" . }}-config
   namespace: {{ .Values.namespace }}
 data:
-  QUERY_SERVICE_PORT: "{{ .Values.service.containerPort }}"
-  SPRING_PROFILES_ACTIVE: "{{ .Values.spring.profilesActive }}"
-  REDIS_HOST: "{{ .Values.redis.host }}"
-  REDIS_PORT: "{{ .Values.redis.port }}"
-  SPRING_DATA_REDIS_HOST: "{{ .Values.redis.host }}"
-  SPRING_DATA_REDIS_PORT: "{{ .Values.redis.port }}"
-  CLICKHOUSE_URL: "jdbc:clickhouse://{{ .Values.clickhouse.host }}:{{ .Values.clickhouse.port }}/{{ .Values.clickhouse.database }}"
-  CLICKHOUSE_DATABASE: "{{ .Values.clickhouse.database }}"
-  OTEL_EXPORTER_OTLP_ENDPOINT: "{{ .Values.otel.endpoint }}"
+  SPRING_PROFILES_ACTIVE: {{ .Values.spring.profilesActive }}
+  REDIS_HOST: {{ .Values.redis.host }}
+  REDIS_PORT: {{ .Values.redis.port }}
+  SPRING_DATA_REDIS_HOST: {{ .Values.redis.host }}
+  SPRING_DATA_REDIS_PORT: {{ .Values.redis.port }}
+  CLICKHOUSE_URL: jdbc:clickhouse://{{ .Values.clickhouse.host }}:{{ .Values.clickhouse.port }}/{{ .Values.clickhouse.database }}
+  AUTH_SERVICE_BASE_URL: {{ .Values.authService.baseUrl }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.otel.endpoint }}

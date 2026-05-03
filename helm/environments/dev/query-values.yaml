@@ -13,9 +13,8 @@ spring:
   profilesActive: docker
 
 redis:
-  host: redis
+  host: redis-master.tanilytics-ingest.svc.cluster.local
   port: 6379
-  password: ""
 
 clickhouse:
   host: clickhouse.tanilytics-storage.svc.cluster.local

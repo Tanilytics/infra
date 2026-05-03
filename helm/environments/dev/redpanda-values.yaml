@@ -30,3 +30,4 @@ resources:
   memory:
     container:
       max: 2Gi
+secrets.create: true

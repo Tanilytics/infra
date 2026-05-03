@@ -181,3 +181,4 @@ job:
     limits:
       cpu: 500m
       memory: 512Mi
+secrets.create: true
