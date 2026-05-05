@@ -1,0 +1,22 @@
+# Applied to /api/* — dashboard and auth endpoints
+# Lower limits — human users, not automated SDKs
+
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: rate-limit-api
+  namespace: tanilytics-gateway
+plugin: rate-limiting
+config:
+  limit_by: consumer   # per authenticated user
+  second: 10
+  minute: 300
+  hour: 5000
+
+  policy: redis
+  redis_host: redis-master.tanilytics-ingest.svc.cluster.local
+  redis_port: 6379
+  redis_database: 1
+
+  error_code: 429
+  error_message: "Too many requests. Please slow down."

@@ -1,0 +1,29 @@
+gateway:
+  service:
+    type: LoadBalancer
+    annotations:
+      # AWS ALB annotation
+      service.beta.kubernetes.io/aws-load-balancer-type: "external"
+      service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+
+  tls:
+    enabled: true
+
+  env:
+    database: "off"
+    log_level: "warn"
+
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 500m
+    limits:
+      memory: 1Gi
+      cpu: 1000m
+
+  # Horizontal Pod Autoscaler
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70

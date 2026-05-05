@@ -1,0 +1,21 @@
+gateway:
+  proxy:
+    type: NodePort
+
+  # Admin API — only accessible inside the cluster
+  admin:
+    enabled: true
+    type: ClusterIP
+    port: 8001
+  # In prod this would be true with cert-manager
+  tls:
+    enabled: false
+
+  env:
+    database: "off"
+    log_level: "info"
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 250m
