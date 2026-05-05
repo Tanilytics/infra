@@ -3,8 +3,12 @@ tls:
 
 listeners:
   kafka:
+    port: 9093
+    authenticationMethod: sasl
     tls:
       enabled: false
+      cert: default
+      requireClientAuth: false
   admin:
     tls:
       enabled: false
@@ -30,4 +34,3 @@ resources:
   memory:
     container:
       max: 2Gi
-secrets.create: true

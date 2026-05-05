@@ -33,11 +33,11 @@ spring:
 
 redis:
   host: redis-master.tanilytics-ingest.svc.cluster.local
-  port: 6379
+  port: "6379"
 
 clickhouse:
   host: clickhouse.tanilytics-storage.svc.cluster.local
-  port: 8123
+  port: "8123"
   database: default
 authService:
   baseUrl: http://auth-service.tanilytics-query.svc.cluster.local:8082

@@ -170,12 +170,11 @@ job:
   env: []
   resources: {}
   migrations:
-    # When true, render the clickhouse migrations ConfigMaps and runner
+    # When true, render the clickhouse migrations ConfigMap
     enabled: false
 
 # NOTE:
 # The init-job chart can be used for arbitrary one-off jobs (redpanda-init, etc.).
-# The ClickHouse migration ConfigMaps and the migration runner are only rendered
-# when `job.migrations.enabled` is true or when the release name contains
-# "clickhouse". This avoids creating ClickHouse-specific ConfigMaps for other
-# init-job releases.
+# The ClickHouse migration ConfigMap is only rendered when `job.migrations.enabled`
+# is true or when the release name contains "clickhouse". This avoids creating
+# ClickHouse-specific ConfigMaps for other init-job releases.

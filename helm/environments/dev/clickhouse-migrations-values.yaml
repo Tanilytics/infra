@@ -2,7 +2,7 @@ job:
   name: clickhouse-migrations
   backoffLimit: 3
   restartPolicy: Never
-  image: clickhouse/clickhouse-server:latest
+  image: migrate/migrate:v4.19.1
   env:
     - name: CLICKHOUSE_USER
       valueFrom:
@@ -17,21 +17,20 @@ job:
     - name: CLICKHOUSE_HOST
       value: "clickhouse-clickhouse.tanilytics-storage.svc.cluster.local"
   command:
-    - /bin/bash
-    - /migrations-runner/run-migrations.sh
+    - /bin/sh
+    - -ec
+    - |
+      migrate -verbose \
+        -path /migrations \
+        -database "clickhouse://${CLICKHOUSE_HOST}:9000?username=${CLICKHOUSE_USER}&password=${CLICKHOUSE_PASSWORD}&x-multi-statement=true" \
+        up
   volumeMounts:
     - name: migrations
       mountPath: /migrations
-    - name: migrations-runner
-      mountPath: /migrations-runner
   volumes:
     - name: migrations
       configMap:
         name: clickhouse-migrations
-    - name: migrations-runner
-      configMap:
-        name: clickhouse-migrations-runner
-        defaultMode: 0755
   migrations:
     enabled: true
   resources:
