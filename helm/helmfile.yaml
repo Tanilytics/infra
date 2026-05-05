@@ -23,6 +23,7 @@ releases:
     values:
       - ./charts/ingestion/values.yaml
       - ./environments/{{ .Environment.Name }}/ingestion-values.yaml
+      - ./environments/{{ .Environment.Name }}/ingestions-secrets.yaml
     needs:
       - tanilytics-stream/redpanda
       - tanilytics-ingest/redis
@@ -33,6 +34,7 @@ releases:
     values:
       - ./charts/processing/values.yaml
       - ./environments/{{ .Environment.Name }}/processing-values.yaml
+      - ./environments/{{ .Environment.Name }}/processing-secrets.yaml
     needs:
       - tanilytics-stream/redpanda
       - tanilytics-storage/clickhouse
