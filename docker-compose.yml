@@ -8,6 +8,7 @@ volumes:
   redpanda-2: null
   postgres-data: null
   redis-data: null
+  clickhouse-data: null
   hadoop-namenode-data: null
   hadoop-datanode-data: null
 services:
@@ -296,6 +297,31 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+  ################
+  # ClickHouse #
+  ################
+  clickhouse:
+    image: ${CLICKHOUSE_IMAGE}
+    container_name: clickhouse
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: ${CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT}
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - ../clickhouse/init-schema.sql:/docker-entrypoint-initdb.d/001_init_schema.sql:ro
+    networks:
+      - tanilytics_network
+    ports:
+      - ${CLICKHOUSE_HTTP_PORT}:8123
+      - ${CLICKHOUSE_TCP_PORT}:9000
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --user \"$${CLICKHOUSE_USER}\" --password \"$${CLICKHOUSE_PASSWORD}\" --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
   ###################
   # Auth Service #
   ###################
@@ -321,11 +347,9 @@ services:
     ports:
       - ${AUTH_SERVICE_PORT}:8082
     depends_on:
-      redpanda-0:
+      postgres:
         condition: service_healthy
       redis:
-        condition: service_healthy
-      namenode:
         condition: service_healthy
 
   ####################
@@ -343,6 +367,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
+      CLICKHOUSE_URL: jdbc:clickhouse://clickhouse:8123/${CLICKHOUSE_DATABASE}?compress=0
+      CLICKHOUSE_USERNAME: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
       HDFS_NAMENODE: hdfs://namenode:9000
       HDFS_USER: ${HDFS_USER}
       HDFS_BASE_PATH: ${HDFS_BASE_PATH}
@@ -354,6 +381,10 @@ services:
     ports:
       - ${QUERY_SERVICE_PORT}:8081
     depends_on:
+      auth-service:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
       redis:
         condition: service_healthy
 
@@ -495,4 +526,66 @@ services:
       redpanda-0:
         condition: service_healthy
       redis:
+        condition: service_healthy
+  ########################
+  # Spark Query Worker #
+  ########################
+  spark-query-worker:
+    build:
+      context: ../spark-query-worker
+      dockerfile: Dockerfile
+    container_name: spark-query-worker
+    networks:
+      - tanilytics_network
+    environment:
+      SPARK_MASTER_URL: ${SPARK_MASTER_URL:-local[*]}
+      HDFS_NAMENODE: hdfs://namenode:9000
+      HDFS_EVENTS_PATH: ${HDFS_BASE_PATH}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: ${CLICKHOUSE_HTTP_PORT}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DATABASE}
+      LOG_LEVEL: ${LOG_LEVEL}
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
+  ################
+  # Dashboard #
+  ################
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+    container_name: dashboard
+    networks:
+      - tanilytics_network
+    ports:
+      - ${DASHBOARD_PORT}:3000
+    environment:
+      SESSION_SECRET: ${SESSION_SECRET}
+      VITE_API_AUTH_LOGIN_URL: http://auth-service:8082/api/v1/auth/login
+      VITE_API_AUTH_REGISTER_URL: http://auth-service:8082/api/v1/auth/register
+      VITE_API_AUTH_REFRESH_URL: http://auth-service:8082/api/v1/auth/refresh
+      VITE_API_SITES_LIST_URL: http://auth-service:8082/api/v1/sites
+      VITE_API_SITES_CREATE_URL: http://auth-service:8082/api/v1/sites
+      VITE_API_SITES_SETTINGS_URL: http://auth-service:8082/api/v1/sites/{siteId}/settings
+      VITE_API_SITES_API_KEY_ROTATE_URL: http://auth-service:8082/api/v1/sites/{siteId}/api-key/rotate
+      VITE_API_SITES_MEMBERS_URL: http://auth-service:8082/api/v1/sites/{siteId}/members
+      VITE_API_ANALYTICS_REALTIME_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/realtime
+      VITE_API_ANALYTICS_AGGREGATE_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/aggregate
+      VITE_API_ANALYTICS_TIMESERIES_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/timeseries
+      VITE_API_ANALYTICS_PAGES_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/pages
+      VITE_API_ANALYTICS_REFERRERS_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/referrers
+      VITE_API_ANALYTICS_MEDIA_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/media
+      VITE_API_ANALYTICS_STREAM_URL: http://query-service:8081/api/v1/sites/{siteId}/stats/stream
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      query-service:
         condition: service_healthy

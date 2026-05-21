@@ -28,6 +28,7 @@ The `pipeline` profile enables only the data pipeline services:
 - `clickhouse`
 - `ingestion`
 - `processing`
+- `spark-query-worker`
 
 Start only the pipeline with:
 
