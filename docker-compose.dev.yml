@@ -177,6 +177,42 @@ services:
       timeout: 5s
       retries: 12
 
+  ########################
+  # ClickHouse Migrations #
+  ########################
+  clickhouse-migrations:
+    profiles: ["pipeline", "app"]
+    image: ${CLICKHOUSE_IMAGE}
+    container_name: clickhouse-migrations
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USERNAME}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    volumes:
+      - ./migrations:/migrations
+    networks:
+      - tanilytics_network
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        for f in /migrations/0*.up.sql; do
+          echo "Running migration: $$f"
+          clickhouse-client \
+            --host clickhouse \
+            --user "$${CLICKHOUSE_USER}" \
+            --password "$${CLICKHOUSE_PASSWORD}" \
+            --query "$$(cat "$$f")"
+          if [ $$? -ne 0 ]; then
+            echo "Migration $$f failed!"
+            exit 1
+          fi
+          echo "Migration $$f completed"
+        done
+        echo "All migrations completed successfully"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
   ################
   # PostgreSQL #
   ################
@@ -262,6 +298,8 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+      clickhouse-migrations:
+        condition: service_completed_successfully
 
   ####################
   # rpk container to create raw-events and dlq topics #
@@ -416,5 +454,7 @@ services:
         condition: service_healthy
       clickhouse:
         condition: service_healthy
+      clickhouse-migrations:
+        condition: service_completed_successfully
       createtopic:
         condition: service_completed_successfully
