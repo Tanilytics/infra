@@ -11,7 +11,7 @@ metadata:
   namespace: tanilytics-gateway
   annotations:
     konghq.com/plugins: cors-events,rate-limit-global,rate-limit-events
-    konghq.com/strip-path: "true"
+    konghq.com/strip-path: "false"
 spec:
   ingressClassName: kong
   rules:
@@ -23,7 +23,7 @@ spec:
               service:
                 name: ingestion-service
                 port:
-                  number: 8080
+                  number: 3000
 
 ---
 # ── Route 2: Authentication ───────────────────────────────────────────────────
@@ -39,23 +39,23 @@ metadata:
   namespace: tanilytics-gateway
   annotations:
     konghq.com/plugins: rate-limit-global,cors-events
-    konghq.com/strip-path: "true"
+    konghq.com/strip-path: "false"
 spec:
   ingressClassName: kong
   rules:
     - http:
         paths:
-          - path: /api/auth
+          - path: /api/v1/auth
             pathType: Prefix
             backend:
               service:
                 name: auth-service
                 port:
-                  number: 8080
+                  number: 8082
 
 ---
 # ── Route 3: Dashboard API ────────────────────────────────────────────────────
-# GET /api/query/*
+# GET /api/sites/*
 # JWT required — dashboard users only
 # Rate limited by consumer (authenticated user)
 
@@ -66,23 +66,23 @@ metadata:
   namespace: tanilytics-gateway
   annotations:
     konghq.com/plugins: jwt-auth,rate-limit-api
-    konghq.com/strip-path: "true"
+    konghq.com/strip-path: "false"
 spec:
   ingressClassName: kong
   rules:
     - http:
         paths:
-          - path: /api/query
+          - path: /api/v1/sites
             pathType: Prefix
             backend:
               service:
                 name: query-service
                 port:
-                  number: 8080
+                  number: 8081
 
 ---
 # ── Route 4: Privacy API ──────────────────────────────────────────────────────
-# /api/privacy/*
+# /api/v1/privacy/*
 # JWT required — authenticated users managing their data
 # Stricter rate limits — GDPR requests are infrequent
 
@@ -93,13 +93,13 @@ metadata:
   namespace: tanilytics-gateway
   annotations:
     konghq.com/plugins: jwt-auth,rate-limit-api
-    konghq.com/strip-path: "true"
+    konghq.com/strip-path: "false"
 spec:
   ingressClassName: kong
   rules:
     - http:
         paths:
-          - path: /api/privacy
+          - path: /api/v1/privacy
             pathType: Prefix
             backend:
               service:
@@ -125,7 +125,7 @@ spec:
   rules:
     - http:
         paths:
-          - path: /
+          - path: /api/v1/dashboard
             pathType: Prefix
             backend:
               service:

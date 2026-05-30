@@ -12,7 +12,7 @@ gateway:
     enabled: false
 
   env:
-    database: "off"
+    database: "postgres"
     log_level: "info"
 
   resources:

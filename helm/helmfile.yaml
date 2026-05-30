@@ -146,6 +146,7 @@ releases:
     values:
       - ./charts/kong-gateway/values.yaml
       - ./environments/{{ .Environment.Name }}/gateway-values.yaml
+      - ./environments/{{ .Environment.Name }}/gateway-secrets.yaml
     needs:
       - kong/kong
       - tanilytics-ingest/ingestion

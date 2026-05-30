@@ -22,7 +22,7 @@ job:
     - |
       migrate -verbose \
         -path /migrations \
-        -database "clickhouse://${CLICKHOUSE_HOST}:9000?username=${CLICKHOUSE_USER}&password=${CLICKHOUSE_PASSWORD}&x-multi-statement=true" \
+        -database "clickhouse://${CLICKHOUSE_HOST}:9000?username=yassine&password=${CLICKHOUSE_PASSWORD}&x-multi-statement=true" \
         up
   volumeMounts:
     - name: migrations

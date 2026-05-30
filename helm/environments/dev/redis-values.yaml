@@ -6,3 +6,6 @@ commonConfiguration: |
 auth:
   enabled: false
 secrets.create: true
+master:
+  persistence:
+    enabled: false
