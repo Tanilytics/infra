@@ -1,0 +1,88 @@
+apiVersion: v2
+name: tanilytics
+description: Umbrella chart for the Tanilytics stack
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+dependencies:
+  - name: redpanda
+    repository: https://charts.redpanda.com
+    version: "*"
+    alias: redpanda
+    condition: components.redpanda
+  - name: redis
+    repository: https://charts.bitnami.com/bitnami
+    version: "*"
+    alias: redis
+    condition: redis.enabled
+  - name: postgresql
+    repository: https://charts.bitnami.com/bitnami
+    version: "*"
+    alias: postgres
+    condition: postgres.enabled
+  - name: altinity-clickhouse-operator
+    repository: https://helm.altinity.com
+    version: "0.26.3"
+    alias: clickhouse-operator
+    condition: clickhouse-operator.enabled
+  - name: clickhouse
+    repository: https://helm.altinity.com
+    version: "0.3.11"
+    alias: clickhouse
+    condition: clickhouse.enabled
+  - name: init-job
+    repository: file://../init-job
+    version: 0.1.0
+    alias: redpanda-init
+    condition: redpanda-init.enabled
+  - name: init-job
+    repository: file://../init-job
+    version: 0.1.0
+    alias: clickhouse-migrations
+    condition: clickhouse-migrations.enabled
+  - name: ingestion
+    repository: file://../ingestion
+    version: 0.1.0
+    alias: ingestion
+    condition: ingestion.enabled
+  - name: processing
+    repository: file://../processing
+    version: 0.1.0
+    alias: processing
+    condition: processing.enabled
+  - name: query-service
+    repository: file://../query-service
+    version: 0.1.0
+    alias: query-service
+    condition: query-service.enabled
+  - name: auth-service
+    repository: file://../auth-service
+    version: 0.1.0
+    alias: auth-service
+    condition: auth-service.enabled
+  - name: ingress
+    repository: https://charts.konghq.com
+    version: "*"
+    alias: kong
+    condition: kong.enabled
+  - name: kong-gateway
+    repository: file://../kong-gateway
+    version: 0.1.0
+    alias: kong-gateway
+    condition: kong-gateway.enabled
+  - name: kube-prometheus-stack
+    repository: https://prometheus-community.github.io/helm-charts
+    version: "58.*"
+    alias: kube-prometheus-stack
+    condition: kube-prometheus-stack.enabled
+  - name: loki-stack
+    repository: https://grafana.github.io/helm-charts
+    version: "*"
+    alias: loki
+    condition: loki.enabled
+  - name: monitoring
+    repository: file://../monitoring
+    version: 0.1.0
+    alias: monitoring
+    condition: monitoring.enabled

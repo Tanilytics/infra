@@ -1,0 +1,22 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: cors-events
+  namespace: tanilytics-gateway
+plugin: cors
+config:
+  # Allow any origin — the SDK runs on customer sites with unknown origins
+  # For the dashboard API restrict this to dashboard domain
+  origins:
+    - "*"
+  methods:
+    - POST
+    - OPTIONS
+  headers:
+    - Content-Type
+    - x-site-token
+  exposed_headers:
+    - X-Auth-Token
+  credentials: false   # Cannot be true when origins is *
+  max_age: 3600
+  preflight_continue: false

@@ -2,7 +2,7 @@ job:
   name: clickhouse-migrations
   backoffLimit: 3
   restartPolicy: Never
-  image: clickhouse/clickhouse-server:latest
+  image: migrate/migrate:v4.19.1
   env:
     - name: CLICKHOUSE_USER
       valueFrom:
@@ -14,37 +14,25 @@ job:
         secretKeyRef:
           name: clickhouse-credentials
           key: password
-  command: |
-    clickhouse-client \
-      -h clickhouse-clickhouse.tanilytics-storage.svc.cluster.local \
-      --user ${CLICKHOUSE_USER} \
-      --password ${CLICKHOUSE_PASSWORD} \
-      --query "CREATE TABLE IF NOT EXISTS default.events
-    (
-        event_id UUID,
-        site_id String,
-        visitor_id String,
-        session_id String,
-        event_type LowCardinality(String),
-        timestamp DateTime64(3, 'UTC'),
-        url String,
-        referrer String,
-        utm_source String,
-        utm_medium String,
-        utm_campaign String,
-        country LowCardinality(String),
-        region LowCardinality(String),
-        device_type LowCardinality(String),
-        browser LowCardinality(String),
-        os LowCardinality(String),
-        screen_width UInt16,
-        properties String,
-        ip_hash String,
-        consent_given Bool
-    )
-    ENGINE = MergeTree
-    PARTITION BY toYYYYMM(timestamp)
-    ORDER BY (site_id, timestamp, visitor_id, event_id);"
+    - name: CLICKHOUSE_HOST
+      value: "clickhouse-clickhouse.tanilytics-storage.svc.cluster.local"
+  command:
+    - /bin/sh
+    - -ec
+    - |
+      migrate -verbose \
+        -path /migrations \
+        -database "clickhouse://${CLICKHOUSE_HOST}:9000?username=yassine&password=${CLICKHOUSE_PASSWORD}&x-multi-statement=true" \
+        up
+  volumeMounts:
+    - name: migrations
+      mountPath: /migrations
+  volumes:
+    - name: migrations
+      configMap:
+        name: clickhouse-migrations
+  migrations:
+    enabled: true
   resources:
     requests:
       cpu: 100m
@@ -52,4 +40,3 @@ job:
     limits:
       cpu: 500m
       memory: 512Mi
-

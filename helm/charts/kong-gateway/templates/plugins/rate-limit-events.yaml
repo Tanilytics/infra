@@ -1,0 +1,37 @@
+# Applied to POST /api/v1/events — the SDK ingest endpoint
+# Higher limits — every page load sends events
+
+#apiVersion: configuration.konghq.com/v1
+#kind: KongPlugin
+#metadata:
+#  name: rate-limit-events
+#  namespace: tanilytics-gateway
+#  annotations:
+#    spec.ingressClassName: kong
+#plugin: rate-limiting
+#config:
+  # Per site token — not per IP
+  # A high-traffic site should not be blocked by a low-traffic site's limits
+#  limit_by: header
+#  header_name: x-site-token
+
+  # Limits per site token
+#  second: 50       # burst — handles batched SDK flushes
+#  minute: 1000     # sustained
+#  hour: 30000
+
+  # Use Redis for distributed rate limiting
+  # Without Redis, limits are per Kong pod not per cluster
+#  policy: redis
+#  redis:
+#    host: redis-master.tanilytics-ingest.svc.cluster.local
+#    port: 6379
+#    database: 1
+
+  # Return 429 when limit exceeded
+#  error_code: 429
+#  error_message: "Rate limit exceeded. Reduce event frequency."
+
+  # Hide rate limit headers from the response
+  # Prevents leaking internal limits to potential attackers
+#  hide_client_headers: false

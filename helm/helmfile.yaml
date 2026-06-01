@@ -12,7 +12,12 @@ repositories:
     url: https://helm.altinity.com
   - name: bitnami
     url: https://charts.bitnami.com/bitnami
-
+  - name: kong
+    url: https://charts.konghq.com
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
 
 ---
 releases:
@@ -23,6 +28,7 @@ releases:
     values:
       - ./charts/ingestion/values.yaml
       - ./environments/{{ .Environment.Name }}/ingestion-values.yaml
+      - ./environments/{{ .Environment.Name }}/ingestions-secrets.yaml
     needs:
       - tanilytics-stream/redpanda
       - tanilytics-ingest/redis
@@ -33,6 +39,7 @@ releases:
     values:
       - ./charts/processing/values.yaml
       - ./environments/{{ .Environment.Name }}/processing-values.yaml
+      - ./environments/{{ .Environment.Name }}/processing-secrets.yaml
     needs:
       - tanilytics-stream/redpanda
       - tanilytics-storage/clickhouse
@@ -124,6 +131,56 @@ releases:
     values:
       - ./charts/auth-service/values.yaml
       - ./environments/{{ .Environment.Name }}/auth-service-values.yaml
+      - ./environments/{{ .Environment.Name }}/auth-service-secrets.yaml
     needs:
       - tanilytics-storage/postgres
       - tanilytics-ingest/redis
+  - name: kong
+    namespace: kong
+    createNamespace: true
+    chart: kong/ingress
+    values:
+      - ./environments/{{ .Environment.Name }}/kong-values.yaml
+    #needs:
+      #- cert-manager/cert-manager
+  - name: kong-gateway
+    namespace: tanilytics-gateway
+    createNamespace: true
+    chart: ./charts/kong-gateway
+    values:
+      - ./charts/kong-gateway/values.yaml
+      - ./environments/{{ .Environment.Name }}/gateway-values.yaml
+      - ./environments/{{ .Environment.Name }}/gateway-secrets.yaml
+    needs:
+      - kong/kong
+      - tanilytics-ingest/ingestion
+      - tanilytics-query/auth-service
+      - tanilytics-query/query-service
+      
+  # kube-prometheus-stack for Prometheus + Grafana + AlertManager
+  - name: kube-prometheus-stack
+    namespace: tanilytics-observe
+    createNamespace: true
+    chart: prometheus-community/kube-prometheus-stack
+    version: "58.x.x"
+    values:
+      - ./environments/{{ .Environment.Name }}/prometheus-values.yaml
+      - ./environments/{{ .Environment.Name }}/prometheus-secrets.yaml
+    needs:
+      - kong/kong
+
+  # Loki for log aggregation
+  - name: loki
+    namespace: tanilytics-observe
+    chart: grafana/loki-stack
+    values:
+      - ./environments/{{ .Environment.Name }}/loki-values.yaml
+    needs:
+      - tanilytics-observe/kube-prometheus-stack
+  - name: monitoring
+    namespace: tanilytics-observe
+    chart: ./charts/monitoring
+    values:
+      - ./environments/{{ .Environment.Name }}/monitoring-values.yaml
+    needs:
+      - tanilytics-observe/kube-prometheus-stack

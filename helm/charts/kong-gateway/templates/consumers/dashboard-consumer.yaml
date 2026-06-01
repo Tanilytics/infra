@@ -1,0 +1,11 @@
+apiVersion: configuration.konghq.com/v1
+kind: KongConsumer
+metadata:
+  name: dashboard-users
+  namespace: tanilytics-gateway
+  annotations:
+    #spec.ingressClassName: kong
+    kubernetes.io/ingress.class: kong
+username: dashboard-users
+credentials:
+  - jwt-signing-secret

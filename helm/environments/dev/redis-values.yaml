@@ -5,3 +5,7 @@ commonConfiguration: |
   loadmodule /opt/bitnami/redis/lib/redis/modules/redisbloom.so
 auth:
   enabled: false
+secrets.create: true
+master:
+  persistence:
+    enabled: false

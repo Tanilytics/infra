@@ -1,3 +1,13 @@
 .env
 secret.yaml
 *-secrets.yaml
+**/.terraform/*
+.terraform/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+*.tfvars
+*.tfvars.json
+tls.crt
+tls.key

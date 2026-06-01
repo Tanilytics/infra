@@ -302,4 +302,3 @@ SELECT
     uniqMerge(unique_sessions) AS unique_sessions
 FROM analytics.campaigns_daily_state
 GROUP BY site_id, day, utm_source, utm_medium, utm_campaign;
-

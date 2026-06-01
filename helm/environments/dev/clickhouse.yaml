@@ -15,7 +15,7 @@ clickhouse:
 
   # Persistent storage
   persistence:
-    enabled: true
+    enabled: false
     storageClass: ""    # leave empty to use cluster default StorageClass
     size: "10Gi"
 

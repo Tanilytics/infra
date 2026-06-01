@@ -1,0 +1,19 @@
+# Applied globally — fallback before any auth
+# Protects against unauthenticated floods
+
+#apiVersion: configuration.konghq.com/v1
+##kind: KongPlugin
+#metadata:
+#  name: rate-limit-global
+#  namespace: tanilytics-gateway
+#plugin: rate-limiting
+#config:
+#  limit_by: ip
+#  second: 100
+#  minute: 2000
+
+#  policy: redis
+#  redis:
+#    host: redis-master.tanilytics-ingest.svc.cluster.local
+#    port: 6379
+#    database: 1

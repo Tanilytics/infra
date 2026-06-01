@@ -1,0 +1,848 @@
+ingestion:
+  namespace: tanilytics-ingest
+  appName: ingestion
+  replicas: 1
+  image:
+    repository: tanilytics/ingestion
+    tag: latest
+
+  healthChecks:
+    enabled: true
+    liveness:
+      path: /livez
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /livez
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 2
+
+  configMap:
+    data:
+      REDPANDA_BROKERS: "redpanda.tanilytics-stream.svc.cluster.local:9093"
+      REDPANDA_SASL_MECHANISM: "SCRAM-SHA-256"
+      PRODUCER_BATCH_MAX_BYTES: "1048576"
+      PRODUCER_TOPIC: "raw-events"
+      PRODUCER_LINGER: "10ms"
+      PRODUCER_MAX_BUFFERED_RECORDS: "50000"
+      PRODUCER_RECORD_RETRIES: "3"
+      PRODUCER_RETRY_TIMEOUT: "30s"
+      LOG_LEVEL: "debug"
+      BLOOM_FILTER_CAPACITY: "1000000"
+      BLOOM_FILTER_ERROR_RATE: "0.001"
+      REDIS_URL: redis://redis-master.tanilytics-ingest.svc.cluster.local:6379
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  secrets:
+    create: false
+    data: {}
+
+processing:
+  appName: processing
+  namespace: tanilytics-processing
+  replicas: 1
+  image:
+    repository: tanilytics/processing
+    tag: latest
+
+  healthChecks:
+    enabled: true
+    liveness:
+      path: /livez
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readiness:
+      path: /livez
+      initialDelaySeconds: 10
+      periodSeconds: 5
+      timeoutSeconds: 3
+      failureThreshold: 2
+
+  configMap:
+    data:
+      PROCESSING_PORT: ":3000"
+      REDPANDA_BROKERS: "redpanda.tanilytics-stream.svc.cluster.local:9093"
+      REDPANDA_SASL_MECHANISM: "SCRAM-SHA-256"
+
+      DLQ_TOPIC: "dlq"
+      DLQ_PRODUCER_BATCH_MAX_BYTES: "1048576"
+      DLQ_PRODUCER_LINGER: "0ms"
+      DLQ_PRODUCER_MAX_BUFFERED_RECORDS: "1000"
+      DLQ_PRODUCER_RECORD_RETRIES: "5"
+      DLQ_PRODUCER_RETRY_TIMEOUT: "1m"
+
+      CLICKHOUSE_ADDRS: "jdbc:clickhouse://clickhouse.tanilytics-storage.svc.cluster.local:9000"
+      CLICKHOUSE_DATABASE: "default"
+      CLICKHOUSE_DIAL_TIMEOUT: "5s"
+      CLICKHOUSE_MAX_OPEN_CONNS: "10"
+      CLICKHOUSE_MAX_IDLE_CONNS: "5"
+      CLICKHOUSE_CONN_OPEN_STRATEGY: "in_order"
+
+      CH_BATCH_SIZE: "10000"
+      CH_BATCH_TIMEOUT: "5s"
+
+      LOG_LEVEL: "debug"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+
+      CONSUMER_GROUP: "event-processor"
+      CONSUMER_TOPIC: "raw-events"
+      CONSUMER_RESET_OFFSET: "end"
+      CONSUMER_FETCH_MIN_BYTES: "65536"
+      CONSUMER_FETCH_MAX_BYTES: "52428800"
+      CONSUMER_FETCH_MAX_WAIT: "250ms"
+      CONSUMER_FETCH_MAX_PARTITION_BYTES: "4194304"
+      CONSUMER_BLOCK_REBALANCE_ON_POLL: "false"
+      CONSUMER_MAX_CONCURRENT_FETCHES: "2"
+
+      GEOIP_DB_PATH: "/data/GeoLite2-City.mmdb"
+      REDIS_URL: redis://redis-master.tanilytics-ingest.svc.cluster.local:6379
+
+  resources:
+    requests:
+      cpu: 300m
+      memory: 256Mi
+    limits:
+      cpu: 700m
+      memory: 768Mi
+
+  secrets:
+    create: false
+    data: {}
+
+redpanda:
+  tls:
+    enabled: false
+
+  listeners:
+    kafka:
+      port: 9093
+      authenticationMethod: sasl
+      tls:
+        enabled: false
+        cert: default
+        requireClientAuth: false
+    admin:
+      tls:
+        enabled: false
+    schemaRegistry:
+      tls:
+        enabled: false
+
+  external:
+    domain: customredpandadomain.local
+
+  statefulset:
+    replicas: 1
+    initContainers:
+      setDataDirOwnership:
+        enabled: true
+  storage:
+    persistentVolume:
+      enabled: false
+
+  resources:
+    cpu:
+      cores: 1
+    memory:
+      container:
+        max: 2Gi
+
+redpanda-init:
+  job:
+    name: redpanda-init
+    backoffLimit: 3
+    restartPolicy: Never
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.10
+    env:
+      - name: REDPANDA_USERS_TXT
+        valueFrom:
+          secretKeyRef:
+            name: redpanda-users
+            key: users.txt
+      - name: REDPANDA_BROKERS
+        value: "redpanda.tanilytics-stream.svc.cluster.local:9093"
+      - name: REDPANDA_SCHEMA_REGISTRY_URL
+        value: "redpanda.tanilytics-stream.svc.cluster.local:8081"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        set -e
+
+        echo "Parsing credentials from users.txt..."
+
+        USER=$(echo "$REDPANDA_USERS_TXT" | cut -d':' -f1)
+        PASS=$(echo "$REDPANDA_USERS_TXT" | cut -d':' -f2)
+
+        echo "User parsed: $USER"
+
+        echo "Creating raw-events topic..."
+                rpk topic create raw-events \
+                  -X brokers=$REDPANDA_BROKERS \
+                  -X user=$USER \
+                  -X pass=$PASS \
+                  -X sasl.mechanism=SCRAM-SHA-512 \
+                  --partitions 12 \
+                  --replicas 1 \
+          -c cleanup.policy=delete \
+          -c retention.ms=259200000 \
+          -c retention.bytes=-1 \
+          -c compression.type=lz4 \
+          || echo "raw-events already exists"
+
+        echo "Creating dlq topic..."
+                rpk topic create dlq \
+                  -X brokers=$REDPANDA_BROKERS \
+                  -X user=$USER \
+                  -X pass=$PASS \
+                  -X sasl.mechanism=SCRAM-SHA-512 \
+                  --partitions 1 \
+                  --replicas 1 \
+          -c cleanup.policy=delete \
+          -c retention.ms=604800000 \
+          -c compression.type=none \
+          || echo "dlq already exists"
+
+        echo "Creating schema..."
+        cat <<EOF > /tmp/raw-events-schema.json
+        {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "title": "RawEvent",
+          "description": "A single analytics event on the raw-events Kafka topic.",
+          "type": "object",
+          "properties": {
+            "event_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "UUID v7 uniquely identifying this event."
+            },
+            "site_id": {
+              "type": "string",
+              "description": "Identifier of the site that produced the event; used as the Kafka message key."
+            },
+            "visitor_id": {
+              "type": "string",
+              "description": "Anonymous or authenticated visitor identifier."
+            },
+            "event_type": {
+              "type": "string",
+              "description": "Type of event (e.g. page_view, click, custom)."
+            },
+            "timestamp": {
+              "type": "integer",
+              "description": "Client-side event timestamp in milliseconds since Unix epoch."
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "Full URL of the page where the event occurred."
+            },
+            "referrer": {
+              "type": "string",
+              "description": "HTTP Referer header value; empty string if none."
+            },
+            "utm_source": {
+              "type": "string",
+              "description": "UTM source parameter."
+            },
+            "utm_medium": {
+              "type": "string",
+              "description": "UTM medium parameter."
+            },
+            "utm_campaign": {
+              "type": "string",
+              "description": "UTM campaign parameter."
+            },
+            "session_context": {
+              "type": "object",
+              "description": "Browser/device context collected at the time of the event.",
+              "properties": {
+                "screen_width": {
+                  "type": "integer",
+                  "description": "Screen width in pixels."
+                },
+                "screen_height": {
+                  "type": "integer",
+                  "description": "Screen height in pixels."
+                },
+                "language": {
+                  "type": "string",
+                  "description": "Browser language (BCP 47 tag)."
+                },
+                "timezone": {
+                  "type": "string",
+                  "description": "IANA timezone name."
+                }
+              },
+              "required": ["screen_width", "screen_height", "language", "timezone"],
+              "additionalProperties": false
+            },
+            "properties": {
+              "type": "object",
+              "description": "Arbitrary custom properties attached to the event.",
+              "additionalProperties": true
+            },
+            "server_timestamp": {
+              "type": "integer",
+              "description": "Server-side ingestion timestamp in milliseconds since Unix epoch."
+            },
+            "ip": {
+              "type": "string",
+              "description": "Client IP address as seen by the ingest server."
+            },
+            "user_agent": {
+              "type": "string",
+              "description": "Raw User-Agent string from the HTTP request."
+            }
+          },
+          "required": [
+            "event_id",
+            "site_id",
+            "visitor_id",
+            "event_type",
+            "timestamp",
+            "url",
+            "referrer",
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "session_context",
+            "properties",
+            "server_timestamp",
+            "ip",
+            "user_agent"
+          ],
+          "additionalProperties": false
+        }
+        EOF
+
+                rpk registry schema list \
+                  -X registry.hosts=$REDPANDA_SCHEMA_REGISTRY_URL \
+                  -X user=$USER \
+                  -X pass=$PASS \
+                  -X sasl.mechanism=SCRAM-SHA-512 || true
+
+                rpk registry schema create raw-events \
+                  --schema /tmp/raw-events-schema.json \
+                  --type json \
+                  -X registry.hosts=$REDPANDA_SCHEMA_REGISTRY_URL \
+                  -X user=$USER \
+                  -X pass=$PASS \
+                  -X sasl.mechanism=SCRAM-SHA-512 || echo "Schema already exists"
+
+        echo "Done"
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+  secrets.create: true
+
+redis:
+  architecture: standalone
+  replica:
+    replicaCount: 1
+  commonConfiguration: |
+    loadmodule /opt/bitnami/redis/lib/redis/modules/redisbloom.so
+  auth:
+    enabled: false
+  secrets.create: true
+  master:
+    persistence:
+      enabled: false
+
+postgres:
+  fullnameOverride: postgres
+  architecture: standalone
+
+  primary:
+    persistence:
+      enabled: false
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    service:
+      type: ClusterIP
+
+clickhouse-operator:
+  webhooks:
+    enabled: false
+
+  crdHook:
+    enabled: true
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+clickhouse:
+  operator:
+    enabled: false
+  clickhouse:
+    clusterLayout:
+      shardsCount: 1
+      replicasCount: 1
+
+    persistence:
+      enabled: false
+      storageClass: ""
+      size: "10Gi"
+
+    resources:
+      requests:
+        cpu: "1"
+        memory: "2Gi"
+      limits:
+        cpu: "4"
+        memory: "4Gi"
+
+    service:
+      type: ClusterIP
+
+    configuration: {}
+
+clickhouse-migrations:
+  job:
+    name: clickhouse-migrations
+    backoffLimit: 3
+    restartPolicy: Never
+    image: migrate/migrate:v4.19.1
+    env:
+      - name: CLICKHOUSE_USER
+        valueFrom:
+          secretKeyRef:
+            name: clickhouse-credentials
+            key: user
+      - name: CLICKHOUSE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: clickhouse-credentials
+            key: password
+      - name: CLICKHOUSE_HOST
+        value: "clickhouse-clickhouse.tanilytics-storage.svc.cluster.local"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        migrate -verbose \
+          -path /migrations \
+          -database "clickhouse://${CLICKHOUSE_HOST}:9000?username=yassine&password=${CLICKHOUSE_PASSWORD}&x-multi-statement=true" \
+          up
+    volumeMounts:
+      - name: migrations
+        mountPath: /migrations
+    volumes:
+      - name: migrations
+        configMap:
+          name: clickhouse-migrations
+    migrations:
+      enabled: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+query-service:
+  namespace: tanilytics-query
+  replicaCount: 1
+  spring:
+    profilesActive: docker
+  image:
+    repository: tanilytics/query-service
+    pullPolicy: Always
+    tag: latest
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+
+  podAnnotations: {}
+  podLabels: {}
+
+  podSecurityContext: {}
+  securityContext: {}
+
+  service:
+    type: ClusterIP
+    port: 8081
+    containerPort: 8081
+
+  redis:
+    host: redis-master.tanilytics-ingest.svc.cluster.local
+    port: "6379"
+
+  clickhouse:
+    host: clickhouse.tanilytics-storage.svc.cluster.local
+    port: "8123"
+    database: default
+  authService:
+    baseUrl: http://auth-service.tanilytics-query.svc.cluster.local:8082
+
+  jwt:
+    secret: change-me-in-production-use-at-least-256-bits
+
+  otel:
+    endpoint: http://otel-collector:4317
+
+  resources: {}
+  resources:
+    requests:
+      cpu: 150m
+      memory: 256Mi
+    limits:
+      cpu: 400m
+      memory: 512Mi
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+
+  volumes: []
+  volumeMounts: []
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  secrets:
+    create: false
+    data: {}
+
+auth-service:
+  namespace: tanilytics-query
+  replicaCount: 1
+
+  image:
+    repository: tanilytics/auth-service
+    pullPolicy: IfNotPresent
+    tag: latest
+
+  imagePullSecrets: []
+
+  nameOverride: ""
+  fullnameOverride: ""
+
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+
+  podAnnotations: {}
+  podLabels: {}
+
+  podSecurityContext: {}
+  securityContext: {}
+
+  service:
+    type: ClusterIP
+    port: 8082
+    containerPort: 8082
+
+  database:
+    host: postgres.tanilytics-storage.svc.cluster.local
+    port: 5432
+    name: postgres
+  redis:
+    host: redis-master.tanilytics-ingest.svc.cluster.local
+    port: 6379
+
+  jwt:
+    accessExpiry: 3600
+    refreshExpiry: 604800
+    audience: auth-internal
+
+  otel:
+    endpoint: http://otel-collector:4317
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 80
+
+  volumes: []
+  volumeMounts: []
+
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  secrets.create: true
+
+kong:
+  gateway:
+    proxy:
+      type: NodePort
+
+    admin:
+      enabled: true
+      type: ClusterIP
+      port: 8001
+    tls:
+      enabled: false
+
+    env:
+      database: "postgres"
+      log_level: "info"
+
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 250m
+
+kong-gateway: {}
+
+kube-prometheus-stack:
+  prometheus:
+    prometheusSpec:
+      retention: 7d
+
+      storageSpec:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 2Gi
+
+      scrapeInterval: 15s
+      evaluationInterval: 15s
+
+      serviceMonitorSelectorNilUsesHelmValues: false
+      serviceMonitorNamespaceSelector: {}
+      serviceMonitorSelector: {}
+
+      podMonitorSelectorNilUsesHelmValues: false
+      podMonitorNamespaceSelector: {}
+      podMonitorSelector: {}
+
+  grafana:
+    enabled: true
+
+    service:
+      type: NodePort
+      nodePort: 32000
+
+    sidecar:
+      dashboards:
+        enabled: true
+        label: grafana_dashboard
+        searchNamespace: tanilytics-observe
+
+    additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+
+  alertmanager:
+    alertmanagerSpec:
+      storage:
+        volumeClaimTemplate:
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+
+    config:
+      global:
+        resolve_timeout: 5m
+
+      route:
+        group_by: ['alertname', 'namespace']
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 4h
+        receiver: 'slack'
+        routes:
+          - match:
+              severity: critical
+            receiver: slack
+            group_wait: 0s
+
+          - match:
+              severity: warning
+            receiver: slack
+
+  nodeExporter:
+    enabled: true
+
+  kubeStateMetrics:
+    enabled: true
+
+  defaultRules:
+    create: true
+    rules:
+      alertmanager: true
+      etcd: false
+      kubeScheduler: false
+      node: true
+      kubernetesApps: true
+      kubernetesResources: true
+      kubernetesStorage: true
+
+loki:
+  loki:
+    enabled: true
+    isDefault: false
+    persistence:
+      enabled: true
+      size: 1Gi
+
+  promtail:
+    enabled: true
+    config:
+      snippets:
+        pipelineStages:
+          - json:
+              expressions:
+                level: level
+                msg: msg
+                service: service
+                trace_id: trace_id
+          - labels:
+              level:
+              service:
+
+monitoring:
+  replicaCount: 1
+
+  image:
+    repository: nginx
+    pullPolicy: IfNotPresent
+    tag: ""
+
+  imagePullSecrets: []
+  nameOverride: ""
+  fullnameOverride: ""
+
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: {}
+    name: ""
+
+  podAnnotations: {}
+  podLabels: {}
+
+  podSecurityContext: {}
+
+  securityContext: {}
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+
+  httpRoute:
+    enabled: false
+    annotations: {}
+    parentRefs:
+    - name: gateway
+      sectionName: http
+    hostnames:
+    - chart-example.local
+    rules:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: /headers
+
+  resources: {}
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 100
+    targetCPUUtilizationPercentage: 80
+
+  volumes: []
+
+  volumeMounts: []
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}

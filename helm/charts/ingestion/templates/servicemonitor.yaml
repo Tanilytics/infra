@@ -1,0 +1,19 @@
+#apiVersion: monitoring.coreos.com/v1
+#kind: ServiceMonitor
+#metadata:
+  #name: ingestion-metrics
+  #namespace: tanilytics-ingest
+  #labels:
+    # This label is what Prometheus uses to discover ServiceMonitors
+    #release: kube-prometheus-stack
+#spec:
+  #selector:
+    #matchLabels:
+      #app: ingestion-service
+  #endpoints:
+    #- port: metrics      
+      #path: /metrics
+      #interval: 15s
+  #namespaceSelector:
+    #matchNames:
+      #- tanilytics-ingest

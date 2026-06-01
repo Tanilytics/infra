@@ -6,7 +6,13 @@ metadata:
     app.kubernetes.io/name: {{ .Values.job.name }}
   annotations:
     # ensures job is recreated on every helm upgrade
+    {{- if .Values.job.hook.enabled }}
+    "helm.sh/hook": {{ .Values.job.hook.type | quote }}
+    "helm.sh/hook-weight": "{{ .Values.job.hook.weight }}"
+    "helm.sh/hook-delete-policy": {{ .Values.job.hook.deletePolicy | quote }}
+    {{- else }}
     "helm.sh/hook-delete-policy": before-hook-creation
+    {{- end }}
 spec:
   backoffLimit: {{ .Values.job.backoffLimit }}
   template:
@@ -19,18 +25,27 @@ spec:
         - name: init
           image: {{ .Values.job.image }}
           imagePullPolicy: IfNotPresent
+          {{- if .Values.job.command }}
           command:
-            - /bin/sh
-            - -c
-            - |
-{{ .Values.job.command | indent 14 }}
+{{ toYaml .Values.job.command | indent 12 }}
+          {{- end }}
 
           {{- if .Values.job.env }}
           env:
 {{ toYaml .Values.job.env | indent 12 }}
           {{- end }}
 
+          {{- if .Values.job.volumeMounts }}
+          volumeMounts:
+{{ toYaml .Values.job.volumeMounts | indent 12 }}
+          {{- end }}
+
           {{- if .Values.job.resources }}
           resources:
 {{ toYaml .Values.job.resources | indent 12 }}
           {{- end }}
+
+      {{- if .Values.job.volumes }}
+      volumes:
+{{ toYaml .Values.job.volumes | indent 8 }}
+      {{- end }}

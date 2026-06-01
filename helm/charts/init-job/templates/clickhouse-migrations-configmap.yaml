@@ -1,0 +1,15 @@
+{{- $isClickhouse := or .Values.job.migrations.enabled (contains "clickhouse" .Release.Name) }}
+{{- if $isClickhouse }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-migrations
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: clickhouse-migrations
+data:
+  {{- range $path, $_ := .Files.Glob "migrations/*.up.sql" }}
+  {{ base $path }}: |
+    {{- $.Files.Get $path | nindent 4 }}
+  {{- end }}
+{{- end }}

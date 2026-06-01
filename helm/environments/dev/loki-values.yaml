@@ -1,0 +1,24 @@
+loki:
+  enabled: true
+  isDefault: false
+  persistence:
+    enabled: true
+    size: 1Gi
+
+promtail:
+  enabled: true
+  config:
+    # Collect logs from all pods in all namespaces
+    snippets:
+      pipelineStages:
+        # Parse JSON logs — your Go services should log JSON
+        - json:
+            expressions:
+              level: level
+              msg: msg
+              service: service
+              trace_id: trace_id
+        # Add labels that make filtering fast in Grafana
+        - labels:
+            level:
+            service:

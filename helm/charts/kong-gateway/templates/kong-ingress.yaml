@@ -1,0 +1,96 @@
+# ── Route 1: SDK Event Ingestion ─────────────────────────────────────────────
+# POST /api/v1/events
+# No JWT — authenticated by site token inside ingestion service
+# Rate limited by site token
+# CORS enabled for browser SDK
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: events-ingress
+  namespace: tanilytics-gateway
+  annotations:
+    konghq.com/plugins: cors-events #,rate-limit-global,rate-limit-events
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  tls:
+    - secretName: kong-tls-secret 
+  rules:
+    - http:
+        paths:
+          - path: /api/v1/events
+            pathType: Prefix
+            backend:
+              service:
+                name: ingestion-service
+                port:
+                  number: 3000
+
+---
+# ── Route 2: Authentication ───────────────────────────────────────────────────
+# POST /api/auth/login
+# POST /api/auth/refresh
+# No JWT required — these endpoints create tokens
+# Rate limited by IP to prevent brute force
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: auth-ingress
+  namespace: tanilytics-gateway
+  annotations:
+    konghq.com/plugins: cors-events #rate-limit-global,
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  tls:
+    - secretName: kong-tls-secret 
+  rules:
+    - http:
+        paths:
+          - path: /api/v1/auth
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8082
+          - path: /api/v1/sites
+            pathType: Prefix
+            backend:
+              service:
+                name: auth-service
+                port:
+                  number: 8082
+
+---
+# ── Route 3: Dashboard API ────────────────────────────────────────────────────
+# GET /api/sites/*
+# JWT required — dashboard users only
+# Rate limited by consumer (authenticated user)
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: query-ingress
+  namespace: tanilytics-gateway
+  annotations:
+    konghq.com/plugins: jwt-auth #,rate-limit-api
+    konghq.com/strip-path: "false"
+spec:
+  ingressClassName: kong
+  tls:
+    - secretName: kong-tls-secret 
+  rules:
+    - http:
+        paths:
+          - path: /api/v1/sites/.*/stats
+            pathType: Prefix
+            backend:
+              service:
+                name: query-service
+                port:
+                  number: 8081
+
+

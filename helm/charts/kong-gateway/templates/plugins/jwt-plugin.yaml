@@ -1,0 +1,24 @@
+# Applied to dashboard and query routes 
+
+apiVersion: configuration.konghq.com/v1
+kind: KongPlugin
+metadata:
+  name: jwt-auth
+  namespace: tanilytics-gateway
+plugin: jwt
+config:
+
+  claims_to_verify:
+    - exp             # expiry — reject expired tokens
+
+  # The header name where Kong forwards the decoded claims
+  # Your services read this instead of decoding the JWT themselves
+  key_claim_name: kid
+
+  # If true, Kong rejects requests with no JWT
+  # Set to false on routes that have a mix of public and authenticated endpoints
+  anonymous: ~        # null means reject unauthenticated requests
+
+  # Maximum allowed clock skew in seconds
+  # Handles minor time differences between servers
+  maximum_expiration: 0   # 0 means no maximum — trust the exp claim

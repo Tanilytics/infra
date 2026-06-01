@@ -24,7 +24,7 @@ configMap:
   data:
     PROCESSING_PORT: ":3000"
     REDPANDA_BROKERS: "redpanda.tanilytics-stream.svc.cluster.local:9093"
-    REDPANDA_SASL_MECHANISM: "SCRAM-SHA-256"
+    REDPANDA_SASL_MECHANISM: "SCRAM-SHA-512"
 
     DLQ_TOPIC: "dlq"
     DLQ_PRODUCER_BATCH_MAX_BYTES: "1048576"
@@ -58,3 +58,15 @@ configMap:
 
     GEOIP_DB_PATH: "/data/GeoLite2-City.mmdb"
     REDIS_URL: redis://redis-master.tanilytics-ingest.svc.cluster.local:6379
+
+resources:
+  requests:
+    cpu: 300m
+    memory: 256Mi
+  limits:
+    cpu: 700m
+    memory: 768Mi
+
+secrets:
+  create: false
+  data: {}
