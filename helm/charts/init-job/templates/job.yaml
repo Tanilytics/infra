@@ -6,7 +6,13 @@ metadata:
     app.kubernetes.io/name: {{ .Values.job.name }}
   annotations:
     # ensures job is recreated on every helm upgrade
+    {{- if .Values.job.hook.enabled }}
+    "helm.sh/hook": {{ .Values.job.hook.type | quote }}
+    "helm.sh/hook-weight": "{{ .Values.job.hook.weight }}"
+    "helm.sh/hook-delete-policy": {{ .Values.job.hook.deletePolicy | quote }}
+    {{- else }}
     "helm.sh/hook-delete-policy": before-hook-creation
+    {{- end }}
 spec:
   backoffLimit: {{ .Values.job.backoffLimit }}
   template:

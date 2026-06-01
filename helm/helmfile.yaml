@@ -14,6 +14,10 @@ repositories:
     url: https://charts.bitnami.com/bitnami
   - name: kong
     url: https://charts.konghq.com
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
 
 ---
 releases:
@@ -153,3 +157,30 @@ releases:
       - tanilytics-query/auth-service
       - tanilytics-query/query-service
       
+  # kube-prometheus-stack for Prometheus + Grafana + AlertManager
+  - name: kube-prometheus-stack
+    namespace: tanilytics-observe
+    createNamespace: true
+    chart: prometheus-community/kube-prometheus-stack
+    version: "58.x.x"
+    values:
+      - ./environments/{{ .Environment.Name }}/prometheus-values.yaml
+      - ./environments/{{ .Environment.Name }}/prometheus-secrets.yaml
+    needs:
+      - kong/kong
+
+  # Loki for log aggregation
+  - name: loki
+    namespace: tanilytics-observe
+    chart: grafana/loki-stack
+    values:
+      - ./environments/{{ .Environment.Name }}/loki-values.yaml
+    needs:
+      - tanilytics-observe/kube-prometheus-stack
+  - name: monitoring
+    namespace: tanilytics-observe
+    chart: ./charts/monitoring
+    values:
+      - ./environments/{{ .Environment.Name }}/monitoring-values.yaml
+    needs:
+      - tanilytics-observe/kube-prometheus-stack

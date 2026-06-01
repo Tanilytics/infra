@@ -5,7 +5,7 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   selector:
-    app: {{ include "query-service.name" . }}
+    app.kubernetes.io/name: {{ include "query-service.name" . }}
   ports:
     - name: http
       port: {{ .Values.service.port }}

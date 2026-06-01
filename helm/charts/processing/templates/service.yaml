@@ -5,9 +5,12 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   selector:
-    app: {{ .Values.appName }}
+    app.kubernetes.io/name: {{ .Values.appName }}
   ports:
     - name: http
       port: 3001        # Service port
       targetPort: 3000  # Container port
+    #- name: metrics
+      #port: 3001        # Service port for metrics
+      #targetPort: 3000  # Container port for metrics
   type: ClusterIP

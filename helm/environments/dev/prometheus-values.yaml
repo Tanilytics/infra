@@ -1,0 +1,110 @@
+# ── Prometheus ────────────────────────────────────────────────────────────────
+prometheus:
+  prometheusSpec:
+    # How long to keep metrics locally
+    retention: 7d
+
+    # In dev — small storage
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+
+    # Scrape every 15 seconds
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+
+    # Tell Prometheus to find ServiceMonitors across all namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+    serviceMonitorSelector: {}
+
+    # Same for PodMonitors
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+    podMonitorSelector: {}
+
+# ── Grafana ───────────────────────────────────────────────────────────────────
+grafana:
+  enabled: true
+
+  # Expose via NodePort in dev for easy local access
+  service:
+    type: NodePort
+    nodePort: 32000
+
+  # Pre-load dashboards from ConfigMaps
+  # Any ConfigMap in the observe namespace with this label
+  # gets loaded as a dashboard automatically
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: tanilytics-observe
+
+  # Pre-configure Loki as a data source
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki:3100
+      access: proxy
+
+# ── AlertManager ──────────────────────────────────────────────────────────────
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
+
+  config:
+    global:
+      resolve_timeout: 5m
+
+    route:
+      group_by: ['alertname', 'namespace']
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      receiver: 'slack'
+      routes:
+        # Critical alerts go immediately
+        - match:
+            severity: critical
+          receiver: slack
+          group_wait: 0s
+
+        # Warnings are batched
+        - match:
+            severity: warning
+          receiver: slack
+
+
+# ── Node exporter ─────────────────────────────────────────────────────────────
+# Collects CPU, memory, disk metrics from every node
+nodeExporter:
+  enabled: true
+
+# ── kube-state-metrics ────────────────────────────────────────────────────────
+# Exposes pod restarts, deployment status, PVC status
+kubeStateMetrics:
+  enabled: true
+
+# ── Default rules ─────────────────────────────────────────────────────────────
+# Ships with useful pre-built alert rules for Kubernetes
+defaultRules:
+  create: true
+  rules:
+    alertmanager: true
+    etcd: false         # not relevant for EKS
+    kubeScheduler: false
+    node: true
+    kubernetesApps: true
+    kubernetesResources: true
+    kubernetesStorage: true

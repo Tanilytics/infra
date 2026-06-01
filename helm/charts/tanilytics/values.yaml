@@ -1,0 +1,80 @@
+namespaces:
+  enabled: true
+  items:
+    - name: tanilytics-stream
+    - name: tanilytics-ingest
+    - name: tanilytics-processing
+    - name: tanilytics-storage
+    - name: tanilytics-query
+    - name: tanilytics-gateway
+    - name: tanilytics-observe
+    - name: kong
+
+components:
+  redpanda: true
+
+redis:
+  enabled: true
+  namespaceOverride: tanilytics-ingest
+
+postgres:
+  enabled: true
+  namespaceOverride: tanilytics-storage
+
+clickhouse-operator:
+  enabled: true
+  namespaceOverride: tanilytics-storage
+
+clickhouse:
+  enabled: true
+  namespaceOverride: tanilytics-storage
+
+redpanda-init:
+  enabled: true
+  job:
+    hook:
+      enabled: true
+      type: post-install,post-upgrade
+      deletePolicy: before-hook-creation,hook-succeeded
+      weight: 10
+
+clickhouse-migrations:
+  enabled: true
+  job:
+    hook:
+      enabled: true
+      type: post-install,post-upgrade
+      deletePolicy: before-hook-creation,hook-succeeded
+      weight: 20
+    migrations:
+      enabled: true
+
+ingestion:
+  enabled: true
+
+processing:
+  enabled: true
+
+query-service:
+  enabled: true
+
+auth-service:
+  enabled: true
+
+kong:
+  enabled: true
+  namespaceOverride: kong
+
+kong-gateway:
+  enabled: true
+
+kube-prometheus-stack:
+  enabled: true
+  namespaceOverride: tanilytics-observe
+
+loki:
+  enabled: true
+  namespaceOverride: tanilytics-observe
+
+monitoring:
+  enabled: true

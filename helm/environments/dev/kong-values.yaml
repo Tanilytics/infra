@@ -1,6 +1,7 @@
 gateway:
   proxy:
-    type: NodePort
+    type: LoadBalancer
+    externalTrafficPolicy: Local
 
   # Admin API — only accessible inside the cluster
   admin:
@@ -9,11 +10,33 @@ gateway:
     port: 8001
   # In prod this would be true with cert-manager
   tls:
-    enabled: false
+    enabled: true
+  certificates:
+    enabled: true
+    # Kong will use this cert for all HTTPS traffic
+    # on the proxy port 443
+    clusterCertSecret: kong-tls-secret
 
   env:
     database: "postgres"
+    pg_host: postgres.tanilytics-storage.svc.cluster.local
+    pg_port: "5432"
+    pg_user: postgres
+    pg_password: postgres
+    pg_database: postgres
     log_level: "info"
+    trusted_ips: "0.0.0.0/0,::/0"
+    real_ip_header: "X-Forwarded-For"
+    real_ip_recursive: "on"
+    # Tell Kong to use the self-signed cert
+    ssl_cert: /etc/secrets/kong-tls-secret/tls.crt
+    ssl_cert_key: /etc/secrets/kong-tls-secret/tls.key
+    # Admin also uses self-signed cert
+    admin_ssl_cert: /etc/secrets/kong-tls-secret/tls.crt
+    admin_ssl_cert_key: /etc/secrets/kong-tls-secret/tls.key
+  # Mount the secret into the Kong pod
+  secretVolumes:
+    - kong-tls-secret
 
   resources:
     requests:

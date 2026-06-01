@@ -15,6 +15,28 @@ This directory contains the Docker Compose configuration for the Tanilytics loca
     docker compose up -d
     ```
 
+## Kubernetes (Helm)
+
+Use Helmfile for the current multi-release workflow:
+
+```bash
+helmfile -f helm/helmfile.yaml -e dev apply
+```
+
+Use the umbrella chart via Helmfile (single release, same values):
+
+```bash
+helmfile -f helm/helmfile-umbrella.yaml -e dev apply
+```
+
+Direct Helm install requires a combined values file that nests values under each subchart
+alias (see helm/helmfile-umbrella.yaml for the exact mapping), then run:
+
+```bash
+helm dependency update helm/charts/tanilytics
+helm install tanilytics helm/charts/tanilytics -f <combined-values.yaml>
+```
+
 ## Dev Pipeline Compose
 
 `docker-compose.dev.yml` mirrors the main compose stack, but replaces the three-node Redpanda cluster with a single `redpanda-0` broker.

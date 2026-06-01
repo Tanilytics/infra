@@ -9,3 +9,5 @@ secret.yaml
 .terraform.lock.hcl
 *.tfvars
 *.tfvars.json
+tls.crt
+tls.key
